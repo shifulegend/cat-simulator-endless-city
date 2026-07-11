@@ -1,21 +1,29 @@
 # Contributing to Endless City Cat
 
-Thanks for wanting to jump in on the cat simulator — this project is better
-with more people poking at it, not less. There's no formal gatekeeping here:
-if you have an idea, a fix, or even just a question, you're welcome.
+This is a sandbox for creativity, not just a bug tracker. If you've got an
+idea for something fun, weird, or ambitious to add to this world, this is
+the place to build it. There's no formal gatekeeping: if you have an idea,
+a fix, a whole new feature, or even just a question, you're welcome.
 
-## Ways to contribute (not just code)
+## Ways to contribute
 
+- **Build something new.** New creatures, mechanics, props, weather, sound,
+  minigames — if it fits a cat roaming an endless city, bring it. Prototype
+  it in a fork, even roughly, and open a PR or a
+  [Discussion](https://github.com/shifulegend/cat-simulator-endless-city/discussions)
+  to talk it through.
+- **Pitch an idea before building it.** Not sure if it fits? Open a
+  Discussion or issue first — that's collaboration, not a bureaucratic hoop.
 - **Play it and report bugs** — you don't need to read a line of code to help.
-- **Suggest features** — open an issue, even if it's rough.
-- **Fix a bug or add a feature** — see the Roadmap in the README for ideas,
-  or bring your own.
+- **Fix a bug or tackle the roadmap** — see the Roadmap in the README for
+  starting points, or bring your own.
 - **Improve docs** — typos, unclear setup steps, missing explanations all count.
 - **Test on devices** — different browsers, phones, tablets; report what breaks.
 - **Review PRs** — a second pair of eyes on someone else's PR is genuinely useful.
 
-No contribution is too small. First-time contributors are especially welcome —
-look for issues labeled `good first issue`.
+No contribution is too small, and no idea is too weird to pitch. First-time
+contributors are especially welcome — look for issues labeled
+`good first issue` if you want an easy way in, but don't feel limited to them.
 
 ## Quick start
 

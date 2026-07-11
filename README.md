@@ -81,39 +81,49 @@ See `docs/ai/testing-strategy.md` for the full test matrix and known issues log.
 - Cars loop within their spawn chunk only; they do not yet react to the player or to traffic lights.
 - Audio requires a user gesture (the Start button) to unlock the Web Audio context, per browser autoplay policy.
 
-## Contributing
+## Build this with us
 
-This project belongs to everyone who wants to help make it better. Whether
-you fix a typo, report a bug, suggest a wild new
-feature, or add collision detection, you're a contributor.
+This game is a sandbox, and the invitation is open: bring your own ideas and
+build them in. It's not just about fixing bugs — this is a place to
+experiment. Want to add a skateboard, a jetpack, a rival cat, seasons,
+weather, a whole new neighborhood, a soundtrack, minigames, or something
+nobody's thought of yet? That's exactly the kind of contribution this
+project wants.
 
-- New here? Look for issues labeled [`good first issue`](https://github.com/shifulegend/cat-simulator-endless-city/labels/good%20first%20issue) or [`help wanted`](https://github.com/shifulegend/cat-simulator-endless-city/labels/help%20wanted).
-- Not sure where to start? Open a [discussion-style issue](https://github.com/shifulegend/cat-simulator-endless-city/issues/new) with your idea — even half-formed ones are welcome.
-- Full setup, branch conventions, and PR checklist: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- **Bring your creativity.** Prototype a weird idea in a fork and open a PR
+  even if it's rough — half-built and fun beats polished and boring.
+- **Start a conversation.** Use [Discussions](https://github.com/shifulegend/cat-simulator-endless-city/discussions)
+  to pitch a feature, share a build, or riff on where this could go.
+- **New here?** [`good first issue`](https://github.com/shifulegend/cat-simulator-endless-city/labels/good%20first%20issue)
+  and [`help wanted`](https://github.com/shifulegend/cat-simulator-endless-city/labels/help%20wanted)
+  are easy entry points, but they're not the ceiling — they're just a way in.
+- Setup, branch conventions, and PR checklist: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - Community expectations: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 - Found a security issue? See [`SECURITY.md`](SECURITY.md) instead of filing a public issue.
 
 ## Roadmap / ideas to pick up
 
-These are open invitations, not assignments — claim one in an issue comment
-before starting so two people don't duplicate work:
+These are starting points, not a to-do list assigned to anyone — claim one in
+an issue/discussion comment before starting so two people don't duplicate
+work, or skip this list entirely and bring something of your own:
 
 - Collision detection (buildings, lamps, benches) — see `docs/ai/mistakes.md`
 - Cars reacting to the player / traffic lights
-- New city props, building styles, or weather effects
-- Additional pigeon/NPC behaviors
+- New city props, building styles, weather, or day/night cycle
+- New creatures, NPCs, or a rival/companion animal
+- New movement abilities, minigames, or emergent mechanics
 - Accessibility improvements (colorblind-friendly UI, remappable controls)
 - More automated test coverage alongside the existing Playwright smoke tests
 
-Got a different idea? Open an issue — this list is a starting point, not a
-fence.
+Got a different idea? Open an issue or a discussion — this list exists to
+spark ideas, not limit them.
 
 ## Contributors
 
-Thanks to everyone who files issues, opens PRs, or just plays and gives
-feedback — that's what keeps this project moving. Contributors are credited
-in PR history and release notes; ping a maintainer if you'd like a shoutout
-here too.
+Thanks to everyone who plays, gives feedback, files issues, opens PRs, or
+builds something new on top of this — that's what makes this a shared
+project instead of a static repo. Contributors are credited in PR history
+and release notes; ping a maintainer if you'd like a shoutout here too.
 
 ## License
 
