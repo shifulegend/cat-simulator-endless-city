@@ -691,83 +691,132 @@ function makeFurTexture(baseHue,baseL){
   const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; return tex;
 }
 const furTexOrange = makeFurTexture(24,52);
-const furTexDark = makeFurTexture(24,26);
-const furMat = new THREE.MeshStandardMaterial({map:furTexOrange, roughness:0.85, metalness:0});
-const furDarkMat = new THREE.MeshStandardMaterial({map:furTexDark, roughness:0.85, metalness:0});
+const furTexDark = makeFurTexture(24,32);
+const furMat = new THREE.MeshStandardMaterial({map:furTexOrange, roughness:0.8, metalness:0});
+const furDarkMat = new THREE.MeshStandardMaterial({map:furTexDark, roughness:0.8, metalness:0});
 const pinkMat = new THREE.MeshStandardMaterial({color:0xe89aa0, roughness:0.5, metalness:0});
 const eyeMat = new THREE.MeshStandardMaterial({color:0x2a7d3f, roughness:0.3, emissive:0x0a2210});
+const noseMat = new THREE.MeshStandardMaterial({color:0x3a2a28, roughness:0.4, metalness:0});
+const whiskerMat = new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0.85});
 
-const torso = new THREE.Mesh(new THREE.SphereGeometry(0.32,14,10), furMat);
-torso.scale.set(1,0.85,1.7);
-torso.position.y = 0.5;
+// Torso: elongated capsule-like body with shoulder/hip bulges instead of a plain sphere
+const torso = new THREE.Mesh(new THREE.SphereGeometry(0.34,16,12), furMat);
+torso.scale.set(1,0.92,1.85);
+torso.position.y = 0.46;
 torso.castShadow = true;
 catRoot.add(torso);
 
+// shoulder + hip bulges to break up the potato silhouette
+const shoulderBulge = new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10), furMat);
+shoulderBulge.scale.set(1.15,0.95,0.9);
+shoulderBulge.position.set(0,0.02,0.34);
+shoulderBulge.castShadow = true;
+torso.add(shoulderBulge);
+const hipBulge = new THREE.Mesh(new THREE.SphereGeometry(0.23,12,10), furMat);
+hipBulge.scale.set(1.2,1,0.95);
+hipBulge.position.set(0,0.01,-0.36);
+hipBulge.castShadow = true;
+torso.add(hipBulge);
+
+const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.19,0.16,10), furMat);
+neck.rotation.x = Math.PI/2 - 0.35;
+neck.position.set(0,0.18,0.5);
+neck.castShadow = true;
+torso.add(neck);
+
 const head = new THREE.Group();
-head.position.set(0,0.28,0.62);
+head.position.set(0,0.3,0.64);
 torso.add(head);
-const headBox = new THREE.Mesh(new THREE.SphereGeometry(0.24,14,10), furMat);
-headBox.scale.set(1,0.92,0.95);
+const headBox = new THREE.Mesh(new THREE.SphereGeometry(0.24,16,12), furMat);
+headBox.scale.set(1,0.9,0.98);
 headBox.castShadow = true;
 head.add(headBox);
-const snout = new THREE.Mesh(new THREE.SphereGeometry(0.11,10,8), pinkMat);
-snout.position.set(0,-0.08,0.19);
-snout.scale.set(1,0.75,0.9);
+const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.15,12,10), furMat);
+muzzle.scale.set(0.95,0.72,0.85);
+muzzle.position.set(0,-0.06,0.15);
+head.add(muzzle);
+const snout = new THREE.Mesh(new THREE.SphereGeometry(0.09,10,8), pinkMat);
+snout.position.set(0,-0.09,0.23);
+snout.scale.set(1,0.7,0.75);
 head.add(snout);
+const nose = new THREE.Mesh(new THREE.SphereGeometry(0.028,8,6), noseMat);
+nose.position.set(0,-0.04,0.29);
+head.add(nose);
 [-1,1].forEach(s=>{
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035,8,8), eyeMat);
-  eye.position.set(s*0.11,0.03,0.17);
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04,8,8), eyeMat);
+  eye.position.set(s*0.11,0.04,0.19);
   head.add(eye);
+  const highlight = new THREE.Mesh(new THREE.SphereGeometry(0.012,6,6), new THREE.MeshBasicMaterial({color:0xffffff}));
+  highlight.position.set(s*0.115,0.05,0.215);
+  head.add(highlight);
 });
 [-1,1].forEach(s=>{
-  const ear = new THREE.Mesh(new THREE.ConeGeometry(0.11,0.2,10), furDarkMat);
-  ear.position.set(s*0.15,0.22,0.02);
-  ear.rotation.y = Math.PI/4;
-  ear.rotation.x = -0.2;
+  const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1,0.16,10), furMat);
+  ear.position.set(s*0.16,0.22,0.03);
+  ear.rotation.y = s*Math.PI/8;
+  ear.rotation.x = -0.15;
   head.add(ear);
+  const earInner = new THREE.Mesh(new THREE.ConeGeometry(0.055,0.09,8), pinkMat);
+  earInner.position.set(s*0.16,0.19,0.06);
+  earInner.rotation.y = s*Math.PI/8;
+  earInner.rotation.x = -0.1;
+  head.add(earInner);
+});
+[-1,1].forEach(s=>{
+  for(let w=0;w<3;w++){
+    const wy = 0.02 - w*0.02;
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(s*0.06,wy,0.22),
+      new THREE.Vector3(s*0.26,wy+ (w-1)*0.015,0.24-w*0.01)
+    ]);
+    const whisker = new THREE.Line(geo, whiskerMat);
+    head.add(whisker);
+  }
 });
 
 const tailSegs = [];
 let tailParent = torso;
-for(let i=0;i<6;i++){
-  const seg = new THREE.Mesh(new THREE.SphereGeometry(0.065-i*0.007,10,8), furDarkMat);
-  seg.scale.set(1,1,1.6);
-  seg.position.z = i===0? -0.62 : -0.22;
-  seg.position.y = i===0? 0.03: 0.02;
-  seg.rotation.x = Math.PI/2 - 0.3;
+const tailSegCount = 7;
+for(let i=0;i<tailSegCount;i++){
+  const radius = 0.09 - i*0.009;
+  const seg = new THREE.Mesh(new THREE.SphereGeometry(Math.max(radius,0.02),10,8), i<tailSegCount-1? furMat : furDarkMat);
+  seg.scale.set(1,1,1.5);
+  seg.position.z = i===0? -0.66 : -0.2;
+  seg.position.y = i===0? 0.08: 0.03;
+  seg.rotation.x = Math.PI/2 - 0.45 + i*0.05;
   tailParent.add(seg);
   tailSegs.push(seg);
   tailParent = seg;
 }
 
 const legLength = 0.5;
-const upperLen = 0.28, lowerLen = 0.26;
+const upperLen = 0.26, lowerLen = 0.24;
 function makeLeg(x,z){
   const hip = new THREE.Group();
-  hip.position.set(x,0.12,z);
+  hip.position.set(x,0.08,z);
   torso.add(hip);
-  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.09,upperLen,10), furMat);
+  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.115,upperLen,10), furMat);
   upper.position.y = -upperLen/2;
   upper.castShadow = true;
   hip.add(upper);
   const knee = new THREE.Group();
   knee.position.y = -upperLen;
   upper.add(knee);
-  const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.07,lowerLen,10), furDarkMat);
+  const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.095,lowerLen,10), furMat);
   lower.position.y = -lowerLen/2;
   lower.castShadow = true;
   knee.add(lower);
   const paw = new THREE.Object3D();
   paw.position.y = -lowerLen;
-  const pawMesh = new THREE.Mesh(new THREE.SphereGeometry(0.065,8,6), furDarkMat);
+  const pawMesh = new THREE.Mesh(new THREE.SphereGeometry(0.085,8,6), furDarkMat);
   paw.add(pawMesh);
   knee.add(paw);
   return {hip, upper, knee, lower, paw};
 }
-const legFL = makeLeg(0.19, 0.42);
-const legFR = makeLeg(-0.19, 0.42);
-const legBL = makeLeg(0.2, -0.42);
-const legBR = makeLeg(-0.2, -0.42);
+const legFL = makeLeg(0.17, 0.36);
+const legFR = makeLeg(-0.17, 0.36);
+const legBL = makeLeg(0.18, -0.38);
+const legBR = makeLeg(-0.18, -0.38);
 const legs = [
   {leg:legFL, phase:0},
   {leg:legFR, phase:Math.PI},
