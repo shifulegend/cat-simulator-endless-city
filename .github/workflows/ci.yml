@@ -1,6 +1,4 @@
-# CI workflow — lint, typecheck, test, build
-# Customize the steps for your stack. Stubs are marked with TODO.
-# Best practice: pin actions to full SHAs for supply-chain security.
+# CI workflow — HTML/JS syntax validation + Playwright smoke tests
 # Docs: https://docs.github.com/en/actions
 
 name: CI
@@ -17,38 +15,66 @@ permissions:
 
 jobs:
   ci:
-    name: Lint · Typecheck · Test · Build
+    name: Validate · Smoke Test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Setup ──────────────────────────────────────────────────────────────
-      # TODO: Replace with your stack's setup step
-      # Examples:
-      #   Node:   uses: actions/setup-node@v4  with: { node-version: '20', cache: 'npm' }
-      #   Python: uses: actions/setup-python@v5  with: { python-version: '3.12' }
-      #   Go:     uses: actions/setup-go@v5  with: { go-version: '1.22' }
-      - name: Setup (TODO — replace for your stack)
-        run: echo "Add your runtime setup here"
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      # ── Install dependencies ───────────────────────────────────────────────
-      - name: Install dependencies
-        run: echo "TODO: npm ci | pip install -r requirements.txt | go mod download"
+      # ── Syntax check ─────────────────────────────────────────────────────
+      - name: Extract and check inline JS syntax
+        run: |
+          node -e "
+            const fs = require('fs');
+            const html = fs.readFileSync('index.html', 'utf-8');
+            const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+            scripts.forEach((m, i) => {
+              fs.writeFileSync('_check_' + i + '.js', m[1]);
+            });
+          "
+          for f in _check_*.js; do node --check "$f"; done
 
-      # ── Lint ───────────────────────────────────────────────────────────────
-      - name: Lint
-        run: echo "TODO: npm run lint | ruff check . | golangci-lint run"
+      # ── Setup Python + Playwright for smoke tests ──────────────────────────
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      # ── Typecheck ──────────────────────────────────────────────────────────
-      - name: Typecheck
-        run: echo "TODO: npm run typecheck | mypy . | go vet ./..."
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
 
-      # ── Test ───────────────────────────────────────────────────────────────
-      - name: Test
-        run: echo "TODO: npm test | pytest | go test ./..."
+      # ── Smoke test ──────────────────────────────────────────────────────────
+      - name: Serve site and run smoke test
+        run: |
+          python3 -m http.server 8000 &
+          sleep 2
+          python3 -c "
+          import asyncio
+          from playwright.async_api import async_playwright
 
-      # ── Build ──────────────────────────────────────────────────────────────
-      - name: Build
-        run: echo "TODO: npm run build | python -m build | go build ./..."
+          async def main():
+              async with async_playwright() as p:
+                  browser = await p.chromium.launch()
+                  page = await browser.new_page()
+                  errors = []
+                  page.on('pageerror', lambda exc: errors.append(str(exc)))
+                  await page.goto('http://localhost:8000', wait_until='domcontentloaded')
+                  await page.click('#startBtn')
+                  await page.wait_for_timeout(1500)
+                  await page.keyboard.down('KeyW')
+                  await page.wait_for_timeout(800)
+                  await page.keyboard.up('KeyW')
+                  assert not errors, f'JS errors detected: {errors}'
+                  await browser.close()
+
+          asyncio.run(main())
+          print('Smoke test passed')
+          "
