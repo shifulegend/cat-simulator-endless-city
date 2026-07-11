@@ -1,26 +1,42 @@
 # Project Overview
-<!-- Last updated: TIMESTAMP -->
+<!-- Last updated: 2026-07-11 -->
 <!-- DYNAMIC FILE — updated automatically by AI agents every session as applicable -->
 
 ## Purpose
-<!-- TODO: Describe what this project does and for whom -->
+A browser-based 3D cat simulator ("Endless City Cat"). The player controls a cat roaming a procedurally generated, infinitely streaming city, chasing pigeons and exploring plazas and skyscrapers. Built for casual play directly in the browser, no install required.
 
 ## Stack & Key Dependencies
-<!-- TODO: List language, frameworks, runtime, key libraries -->
+- **Language**: Vanilla JavaScript (ES6), single-file architecture
+- **Rendering**: Three.js r128 (vendored inline in `index.html`, no CDN/npm dependency)
+- **Audio**: Web Audio API (procedural synthesis — no audio files)
+- **Textures**: Runtime HTML5 Canvas-generated textures (no image assets)
+- **Hosting**: GitHub Pages (static, zero build step)
+- **Testing**: Playwright (Python) for headless browser smoke tests, run manually/via CI
 
 ## Architecture Overview
-<!-- TODO: High-level architecture: components, data flow, integration boundaries -->
+Single `index.html` file containing three sections:
+1. **Head/UI** — CSS, start overlay, HUD, virtual joystick canvas, meow button
+2. **Three.js library** — vendored, unminified, inline `<script>` block
+3. **Game logic** — IIFE-scoped app script covering: scene/lighting setup, procedural texture generation, PBR materials, a `ChunkSlot` pool for endless 2D city streaming, cat rig (IK-driven legs, jointed tail), pigeon/car/traffic-light NPCs, input handling (keyboard, mouse, touch), procedural audio, and the main `update()` game loop.
+
+City streaming works via a fixed pool of `ChunkSlot` objects (5x5 = 25 by default) that get reassigned to new grid coordinates as the player moves, using a seeded hash per (cx, cz) so revisited chunks regenerate identically.
+
+The third-person camera follows the cat using a yaw-based offset (`camOffset`) rotated by `camYaw`; the offset must point in the same direction as the cat's forward vector so the camera trails behind the cat's back rather than in front of its face (see `docs/ai/mistakes.md` entry 2026-07-11 for a regression on this).
 
 ## Important Directories
 | Directory | Purpose |
 |-----------|---------|
-| `src/`    | <!-- TODO --> |
-| `docs/`   | Documentation and AI memory |
-| `tests/`  | <!-- TODO --> |
-| `config/` | <!-- TODO --> |
+| `index.html` | Entire game (markup, styles, library, logic) |
+| `docs/ai/`   | AI agent session memory (architecture, mistakes, decisions) |
+| `docs/`      | Human-facing setup/branch docs |
+| `.github/`   | CI workflows, Dependabot config |
 
 ## Domain Terminology
-<!-- TODO: Define key terms used in this project -->
+- **Chunk**: One `CHUNK x CHUNK` (56x56 unit) square of city, containing one road intersection and either a plaza or a row of buildings.
+- **ChunkSlot**: A reusable Three.js group representing one active chunk in the world; assigned/reassigned as the player moves.
+- **Active radius**: Number of chunks kept loaded around the player in each direction (default 2, giving a 5x5 grid).
+- **Heading**: The cat's target facing angle, derived from camera yaw + input direction.
 
 ## Major Integration Boundaries
-<!-- TODO: External systems, APIs, databases, services this project depends on -->
+- **GitHub Pages**: Static hosting; deploys automatically from `main` branch `index.html`.
+- **No backend, no database, no external APIs.** The game is fully client-side and stateless (no save/persistence across sessions).
