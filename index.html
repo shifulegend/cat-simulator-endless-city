@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Endless City Cat Simulator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;width:100%;height:100%;background:#111;touch-action:none;-webkit-user-select:none;user-select:none;font-family:sans-serif;}
+  canvas{display:block;}
+  #ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;}
+  #joyCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:11;}
+  #hud{position:fixed;top:10px;left:10px;color:#fff;font-size:13px;text-shadow:0 0 4px #000;pointer-events:none;opacity:.85;}
+  #meowBtn{position:fixed;bottom:24px;right:24px;width:74px;height:74px;border-radius:50%;background:rgba(255,150,60,.55);
+    border:2px solid rgba(255,255,255,.6);color:#fff;font-size:12px;pointer-events:auto;z-index:12;display:flex;align-items:center;justify-content:center;}
+  #startOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,15,.92);color:#fff;z-index:100;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
+  #startOverlay h1{margin:0 0 6px;font-size:26px;}
+  #startOverlay p{max-width:420px;font-size:14px;opacity:.85;line-height:1.4;}
+  #startBtn{margin-top:18px;padding:12px 28px;font-size:16px;background:#ff9a3c;border:none;border-radius:8px;color:#1a1a1a;font-weight:bold;pointer-events:auto;cursor:pointer;}
+  #loadBar{width:220px;height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:14px;display:none;}
+  #loadFill{width:0%;height:100%;background:#ff9a3c;}
+</style>
+</head>
+<body>
+<div id="startOverlay">
+  <h1>&#128008; Endless City Cat</h1>
+  <p>Explore a procedurally generated, infinite city as a cat. Left side: move. Right side: look around. Tap the paw button to meow. On PC: WASD/Arrows to move, mouse-drag to look, Space to meow.</p>
+  <div id="loadBar"><div id="loadFill"></div></div>
+  <button id="startBtn">Start</button>
+</div>
+<canvas id="c"></canvas>
+<canvas id="joyCanvas"></canvas>
+<div id="hud">FPS: <span id="fps">--</span></div>
+<div id="meowBtn">MEOW</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================= GLOBAL SETUP ============================= */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:false, powerPreference:"high-performance"});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+
+const scene = new THREE.Scene();
+const skyColor = new THREE.Color(0x8fb8d9);
+scene.background = skyColor;
+scene.fog = new THREE.FogExp2(0x8fb8d9, 0.012);
+
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth/window.innerHeight, 0.1, 500);
+camera.position.set(0,6,-10);
+
+window.addEventListener('resize', ()=>{
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  resizeJoyCanvas();
+});
+
+/* ============================= LIGHTING ============================= */
+const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x33342f, 0.9);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff2d8, 1.05);
+sun.position.set(40,60,20);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024,1024);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 150;
+sun.shadow.camera.left = -60;
+sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 60;
+sun.shadow.camera.bottom = -60;
+scene.add(sun);
+const sunTarget = new THREE.Object3D();
+scene.add(sunTarget);
+sun.target = sunTarget;
+
+/* ============================= PROCEDURAL CANVAS TEXTURES ============================= */
+function makeCanvas(size){
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  return c;
+}
+function noiseFill(ctx,size,base,variance){
+  const img = ctx.createImageData(size,size);
+  for(let i=0;i<img.data.length;i+=4){
+    const n = base + (Math.random()-0.5)*variance;
+    img.data[i]=n; img.data[i+1]=n; img.data[i+2]=n; img.data[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+function makeAsphaltTexture(){
+  const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
+  noiseFill(ctx,size,55,26);
+  ctx.strokeStyle='rgba(255,220,120,0.55)';
+  ctx.lineWidth=3;
+  ctx.setLineDash([14,10]);
+  ctx.beginPath(); ctx.moveTo(size/2,0); ctx.lineTo(size/2,size); ctx.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+function makeConcreteTexture(){
+  const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
+  noiseFill(ctx,size,190,22);
+  ctx.strokeStyle='rgba(120,120,120,0.4)'; ctx.lineWidth=2;
+  for(let x=0;x<size;x+=64){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,size); ctx.stroke(); }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+function makeBrickTexture(hue){
+  const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
+  ctx.fillStyle = `hsl(${hue},10%,85%)`;
+  ctx.fillRect(0,0,size,size);
+  const bw=32,bh=16;
+  ctx.fillStyle = `hsl(${hue},45%,42%)`;
+  let row=0;
+  for(let y=0;y<size;y+=bh){
+    const offset = (row%2===0)?0:bw/2;
+    for(let x=-bw;x<size+bw;x+=bw){
+      ctx.fillRect(x+offset+1,y+1,bw-2,bh-2);
+    }
+    row++;
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1,3);
+  return tex;
+}
+function makeWindowTexture(hue){
+  const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
+  ctx.fillStyle = `hsl(${hue},30%,25%)`;
+  ctx.fillRect(0,0,size,size);
+  const cols=6, rows=10;
+  for(let ry=0;ry<rows;ry++){
+    for(let cx=0;cx<cols;cx++){
+      const lit = Math.random()>0.45;
+      ctx.fillStyle = lit ? 'rgba(255,230,140,0.9)' : 'rgba(40,60,80,0.7)';
+      const w=size/cols, h=size/rows;
+      ctx.fillRect(cx*w+4, ry*h+4, w-8, h-8);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+const asphaltTex = makeAsphaltTexture();
+const concreteTex = makeConcreteTexture();
+const buildingTexPool = [];
+for(let i=0;i<6;i++){
+  buildingTexPool.push(Math.random()>0.5 ? makeBrickTexture(20+i*40) : makeWindowTexture(190+i*20));
+}
+
+/* ============================= MATERIALS ============================= */
+const streetMat = new THREE.MeshLambertMaterial({map:asphaltTex});
+streetMat.map.repeat.set(4,40);
+const sidewalkMat = new THREE.MeshLambertMaterial({map:concreteTex});
+sidewalkMat.map.repeat.set(2,20);
+const buildingMats = buildingTexPool.map(t=>new THREE.MeshLambertMaterial({map:t, flatShading:true}));
+const promenadeMat = new THREE.MeshLambertMaterial({color:0x9c8d6f, flatShading:true});
+const lampMat = new THREE.MeshLambertMaterial({color:0x333333, flatShading:true});
+const lampGlowMat = new THREE.MeshBasicMaterial({color:0xffe37a});
+const benchMat = new THREE.MeshLambertMaterial({color:0x6b4a2b, flatShading:true});
+
+/* ============================= WORLD / CHUNK SYSTEM ============================= */
+const CHUNK_SIZE = 60;
+const NUM_CHUNKS = 9; // enough ahead+behind
+const STREET_HALF_WIDTH = 10;
+const SIDEWALK_WIDTH = 5;
+
+const streetMesh = new THREE.Mesh(new THREE.PlaneGeometry(STREET_HALF_WIDTH*2, CHUNK_SIZE*NUM_CHUNKS+200), streetMat);
+streetMesh.rotation.x = -Math.PI/2;
+streetMesh.receiveShadow = true;
+scene.add(streetMesh);
+
+const MAX_BUILDINGS_PER_CHUNK = 8;
+const totalBuildingSlots = NUM_CHUNKS*MAX_BUILDINGS_PER_CHUNK;
+const boxGeo = new THREE.BoxGeometry(1,1,1);
+boxGeo.computeVertexNormals();
+
+const buildingMesh = new THREE.InstancedMesh(boxGeo, buildingMats[0], totalBuildingSlots);
+buildingMesh.castShadow = false;
+buildingMesh.receiveShadow = false;
+scene.add(buildingMesh);
+// Since InstancedMesh only supports single material, we vary color via instanceColor instead of swapping textures per instance.
+buildingMesh.material = new THREE.MeshLambertMaterial({flatShading:true, vertexColors:false});
+buildingMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(totalBuildingSlots*3),3);
+buildingMesh.material.map = buildingTexPool[0];
+
+const sidewalkGeo = new THREE.BoxGeometry(SIDEWALK_WIDTH, 0.5, CHUNK_SIZE);
+const sidewalkLeft = [];
+const sidewalkRight = [];
+
+const lampGeo = new THREE.CylinderGeometry(0.08,0.1,3,6);
+const lampHeadGeo = new THREE.SphereGeometry(0.25,6,6);
+const benchSeatGeo = new THREE.BoxGeometry(1.6,0.15,0.5);
+const benchLegGeo = new THREE.BoxGeometry(0.1,0.4,0.5);
+
+const dummy = new THREE.Object3D();
+const tmpColor = new THREE.Color();
+
+class Chunk {
+  constructor(index){
+    this.index = index;
+    this.z = index*CHUNK_SIZE - (NUM_CHUNKS*CHUNK_SIZE)/2;
+    this.group = new THREE.Group();
+    scene.add(this.group);
+
+    this.sidewalkL = new THREE.Mesh(sidewalkGeo, sidewalkMat);
+    this.sidewalkL.position.set(-(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2),0.25,0);
+    this.sidewalkL.receiveShadow = true;
+    this.group.add(this.sidewalkL);
+
+    this.sidewalkR = new THREE.Mesh(sidewalkGeo, sidewalkMat);
+    this.sidewalkR.position.set(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2,0.25,0);
+    this.sidewalkR.receiveShadow = true;
+    this.group.add(this.sidewalkR);
+
+    this.decor = new THREE.Group();
+    this.group.add(this.decor);
+
+    this.buildingSlotStart = index*MAX_BUILDINGS_PER_CHUNK;
+    this.regenerate();
+  }
+  regenerate(){
+    this.group.position.z = this.z;
+    while(this.decor.children.length){
+      const c = this.decor.children.pop();
+      c.geometry && c.geometry.dispose && c.geometry.dispose();
+    }
+    const isPromenade = (Math.floor(Math.abs(this.z)/CHUNK_SIZE) % 5 === 0);
+
+    for(let side=-1; side<=1; side+=2){
+      let cursorZ = -CHUNK_SIZE/2 + 3;
+      let slot = 0;
+      while(cursorZ < CHUNK_SIZE/2 - 3 && slot < MAX_BUILDINGS_PER_CHUNK/2){
+        const isAlley = Math.random() < 0.22;
+        if(isAlley){
+          cursorZ += 3 + Math.random()*1.5;
+          continue;
+        }
+        const width = 6 + Math.random()*6;
+        const depth = 6 + Math.random()*6;
+        const height = 10 + Math.random()*70;
+        const xBase = side*(STREET_HALF_WIDTH+SIDEWALK_WIDTH+2+width/2+Math.random()*4);
+        const gIdx = this.buildingSlotStart + Math.floor(Math.random()*MAX_BUILDINGS_PER_CHUNK);
+        dummy.position.set(xBase, height/2, cursorZ);
+        dummy.scale.set(width, height, depth);
+        dummy.rotation.set(0,0,0);
+        dummy.updateMatrix();
+        buildingMesh.setMatrixAt(gIdx, dummy.matrix);
+        const hue = Math.random();
+        tmpColor.setHSL(0.55+hue*0.15, 0.15+Math.random()*0.2, 0.35+Math.random()*0.35);
+        buildingMesh.setColorAt(gIdx, tmpColor);
+        cursorZ += depth + 1 + Math.random()*2;
+        slot++;
+      }
+      if(isPromenade){
+        for(let pz=-CHUNK_SIZE/2+5; pz<CHUNK_SIZE/2-5; pz+=10){
+          const lamp = new THREE.Group();
+          const pole = new THREE.Mesh(lampGeo, lampMat);
+          pole.position.y = 1.5;
+          pole.castShadow = false;
+          const head = new THREE.Mesh(lampHeadGeo, lampGlowMat);
+          head.position.y = 3;
+          lamp.add(pole, head);
+          lamp.position.set(side*(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2), 0.5, pz);
+          this.decor.add(lamp);
+
+          if(Math.random()>0.5){
+            const bench = new THREE.Group();
+            const seat = new THREE.Mesh(benchSeatGeo, benchMat);
+            seat.position.y = 0.4;
+            const l1 = new THREE.Mesh(benchLegGeo, benchMat); l1.position.set(-0.6,0.2,0);
+            const l2 = new THREE.Mesh(benchLegGeo, benchMat); l2.position.set(0.6,0.2,0);
+            bench.add(seat,l1,l2);
+            bench.position.set(side*(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2+1.2), 0.5, pz+3);
+            bench.rotation.y = side>0? Math.PI:0;
+            this.decor.add(bench);
+          }
+        }
+      }
+    }
+    buildingMesh.instanceMatrix.needsUpdate = true;
+    if(buildingMesh.instanceColor) buildingMesh.instanceColor.needsUpdate = true;
+  }
+}
+
+const chunks = [];
+for(let i=0;i<NUM_CHUNKS;i++) chunks.push(new Chunk(i));
+
+function updateChunks(playerZ){
+  for(const chunk of chunks){
+    const relative = chunk.z - playerZ;
+    if(relative < -CHUNK_SIZE*(NUM_CHUNKS/2)){
+      chunk.z += CHUNK_SIZE*NUM_CHUNKS;
+      chunk.regenerate();
+    } else if(relative > CHUNK_SIZE*(NUM_CHUNKS/2)){
+      chunk.z -= CHUNK_SIZE*NUM_CHUNKS;
+      chunk.regenerate();
+    }
+  }
+}
+
+/* ============================= CAT AVATAR ============================= */
+const catRoot = new THREE.Group();
+scene.add(catRoot);
+
+const furMat = new THREE.MeshLambertMaterial({color:0xE8823C, flatShading:true});
+const furDarkMat = new THREE.MeshLambertMaterial({color:0x6b3f1f, flatShading:true});
+const pinkMat = new THREE.MeshLambertMaterial({color:0xe89aa0, flatShading:true});
+
+const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,1.1), furMat);
+torso.position.y = 0.55;
+torso.castShadow = true;
+catRoot.add(torso);
+
+const head = new THREE.Group();
+head.position.set(0,0.35,0.6);
+torso.add(head);
+const headBox = new THREE.Mesh(new THREE.BoxGeometry(0.42,0.38,0.4), furMat);
+headBox.castShadow = true;
+head.add(headBox);
+const snout = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.18,0.18), pinkMat);
+snout.position.set(0,-0.06,0.28);
+head.add(snout);
+[-1,1].forEach(s=>{
+  const ear = new THREE.Mesh(new THREE.ConeGeometry(0.12,0.22,4), furDarkMat);
+  ear.position.set(s*0.15,0.28,0.05);
+  ear.rotation.y = Math.PI/4;
+  head.add(ear);
+});
+
+const tailSegs = [];
+let tailParent = torso;
+for(let i=0;i<5;i++){
+  const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.07-i*0.008,0.08-i*0.008,0.28,5), furDarkMat);
+  seg.position.z = i===0? -0.6 : -0.26;
+  seg.position.y = i===0? 0.05: 0.03;
+  seg.rotation.x = Math.PI/2 - 0.3;
+  tailParent.add(seg);
+  tailSegs.push(seg);
+  tailParent = seg;
+}
+
+const legLength = 0.5;
+const upperLen = 0.28, lowerLen = 0.26;
+function makeLeg(x,z){
+  const hip = new THREE.Group();
+  hip.position.set(x,0.15,z);
+  torso.add(hip);
+  const upper = new THREE.Mesh(new THREE.BoxGeometry(0.14,upperLen,0.14), furMat);
+  upper.position.y = -upperLen/2;
+  upper.castShadow = true;
+  hip.add(upper);
+  const knee = new THREE.Group();
+  knee.position.y = -upperLen;
+  upper.add(knee);
+  const lower = new THREE.Mesh(new THREE.BoxGeometry(0.11,lowerLen,0.11), furDarkMat);
+  lower.position.y = -lowerLen/2;
+  lower.castShadow = true;
+  knee.add(lower);
+  const paw = new THREE.Object3D();
+  paw.position.y = -lowerLen;
+  knee.add(paw);
+  return {hip, upper, knee, lower, paw};
+}
+const legFL = makeLeg(0.22, 0.4);
+const legFR = makeLeg(-0.22, 0.4);
+const legBL = makeLeg(0.22, -0.4);
+const legBR = makeLeg(-0.22, -0.4);
+const legs = [
+  {leg:legFL, phase:0,       baseX:0.22, baseZ:0.4},
+  {leg:legFR, phase:Math.PI, baseX:-0.22,baseZ:0.4},
+  {leg:legBL, phase:Math.PI, baseX:0.22, baseZ:-0.4},
+  {leg:legBR, phase:0,       baseX:-0.22,baseZ:-0.4}
+];
+
+function solveLegIK(legObj, targetLocal){
+  const L1 = upperLen, L2 = lowerLen;
+  const hipPos = new THREE.Vector3(0, 0, 0);
+  const dx = targetLocal.x, dy = targetLocal.y, dz = targetLocal.z;
+  let dist = Math.sqrt(dx*dx+dy*dy+dz*dz);
+  dist = Math.min(dist, L1+L2-0.001);
+  dist = Math.max(dist, Math.abs(L1-L2)+0.001);
+  const cosKnee = (L1*L1+L2*L2-dist*dist)/(2*L1*L2);
+  const kneeAngle = Math.acos(Math.max(-1,Math.min(1,cosKnee)));
+  const cosHip = (L1*L1+dist*dist-L2*L2)/(2*L1*dist);
+  const hipOffsetAngle = Math.acos(Math.max(-1,Math.min(1,cosHip)));
+  const angleToTarget = Math.atan2(-dy, Math.sqrt(dx*dx+dz*dz));
+  const hipAngle = angleToTarget + hipOffsetAngle;
+  legObj.upper.rotation.x = -(Math.PI/2 - hipAngle);
+  legObj.knee.rotation.x = Math.PI - kneeAngle;
+  const yaw = Math.atan2(dx,dz);
+  legObj.hip.rotation.y = yaw*0.4;
+}
+
+let gaitTime = 0;
+const targetVec = new THREE.Vector3();
+function animateCat(dt, speed){
+  gaitTime += dt * (2 + speed*4.5);
+  const strideAmp = 0.18 * Math.min(1, 0.3+speed*1.4);
+  const stepHeight = 0.14 * Math.min(1, 0.3+speed*1.4);
+  legs.forEach(({leg, phase})=>{
+    const phi = gaitTime + phase;
+    const zOff = Math.sin(phi)*strideAmp;
+    const yLift = Math.max(0, Math.sin(phi))*stepHeight;
+    targetVec.set(0, -legLength + yLift, zOff);
+    solveLegIK(leg, targetVec);
+  });
+  tailSegs.forEach((seg,i)=>{
+    seg.rotation.y = Math.sin(gaitTime*0.6 + i*0.5)*0.25;
+  });
+  const bob = Math.sin(gaitTime*2)*0.02*Math.min(1,0.3+speed*1.4);
+  torso.position.y = 0.55 + bob;
+}
+
+/* ============================= COLLISION (AABB simplified) ============================= */
+function getBuildingBoxAt(z){
+  // simplified: keep cat within street+sidewalk lane, push back near sidewalk edge only visually
+  return null;
+}
+
+/* ============================= CONTROLS ============================= */
+const input = {moveX:0, moveY:0, lookX:0, lookY:0};
+const keys = {};
+window.addEventListener('keydown', e=>{keys[e.code]=true; if(e.code==='Space') triggerMeow();});
+window.addEventListener('keyup', e=>{keys[e.code]=false;});
+
+let mouseDown=false, lastMouseX=0, lastMouseY=0;
+canvas.addEventListener('mousedown', e=>{mouseDown=true; lastMouseX=e.clientX; lastMouseY=e.clientY;});
+window.addEventListener('mouseup', ()=>{mouseDown=false;});
+window.addEventListener('mousemove', e=>{
+  if(!mouseDown) return;
+  input.lookX = (e.clientX-lastMouseX)*0.003;
+  input.lookY = (e.clientY-lastMouseY)*0.003;
+  lastMouseX=e.clientX; lastMouseY=e.clientY;
+});
+
+// Touch joystick
+const joyCanvas = document.getElementById('joyCanvas');
+const jctx = joyCanvas.getContext('2d');
+function resizeJoyCanvas(){
+  joyCanvas.width = window.innerWidth;
+  joyCanvas.height = window.innerHeight;
+}
+resizeJoyCanvas();
+
+const touches = {left:null, right:null};
+function touchSide(x){ return x < window.innerWidth/2 ? 'left':'right'; }
+
+canvas.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    const side = touchSide(t.clientX);
+    if(!touches[side]) touches[side] = {id:t.identifier, ox:t.clientX, oy:t.clientY, cx:t.clientX, cy:t.clientY};
+  }
+}, {passive:false});
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    for(const side of ['left','right']){
+      if(touches[side] && touches[side].id===t.identifier){
+        touches[side].cx = t.clientX; touches[side].cy = t.clientY;
+      }
+    }
+  }
+}, {passive:false});
+function endTouch(e){
+  for(const t of e.changedTouches){
+    for(const side of ['left','right']){
+      if(touches[side] && touches[side].id===t.identifier) touches[side]=null;
+    }
+  }
+}
+canvas.addEventListener('touchend', endTouch);
+canvas.addEventListener('touchcancel', endTouch);
+
+const JOY_RADIUS = 55, DEADZONE = 6;
+function processTouches(){
+  input.moveX = 0; input.moveY = 0;
+  if(keys['ArrowLeft']||keys['KeyA']) input.moveX = -1;
+  if(keys['ArrowRight']||keys['KeyD']) input.moveX = 1;
+  if(keys['ArrowUp']||keys['KeyW']) input.moveY = -1;
+  if(keys['ArrowDown']||keys['KeyS']) input.moveY = 1;
+
+  jctx.clearRect(0,0,joyCanvas.width,joyCanvas.height);
+  if(touches.left){
+    let dx = touches.left.cx-touches.left.ox, dy = touches.left.cy-touches.left.oy;
+    let mag = Math.sqrt(dx*dx+dy*dy);
+    if(mag>DEADZONE){
+      const clamped = Math.min(mag, JOY_RADIUS);
+      const nx = dx/mag*clamped, ny = dy/mag*clamped;
+      input.moveX = nx/JOY_RADIUS;
+      input.moveY = ny/JOY_RADIUS;
+    }
+    drawJoy(touches.left.ox, touches.left.oy, touches.left.cx, touches.left.cy);
+  }
+  if(touches.right){
+    let dx = touches.right.cx-touches.right.ox, dy = touches.right.cy-touches.right.oy;
+    input.lookX = dx*0.0025;
+    input.lookY = dy*0.0025;
+    drawJoy(touches.right.ox, touches.right.oy, touches.right.cx, touches.right.cy);
+  } else {
+    input.lookX *= 0.8; input.lookY*=0.8;
+  }
+}
+function drawJoy(ox,oy,cx,cy){
+  jctx.beginPath(); jctx.arc(ox,oy,JOY_RADIUS,0,Math.PI*2);
+  jctx.fillStyle='rgba(255,255,255,0.15)'; jctx.fill();
+  jctx.strokeStyle='rgba(255,255,255,0.5)'; jctx.stroke();
+  let dx=cx-ox, dy=cy-oy; const mag=Math.sqrt(dx*dx+dy*dy);
+  if(mag>JOY_RADIUS){ dx=dx/mag*JOY_RADIUS; dy=dy/mag*JOY_RADIUS; }
+  jctx.beginPath(); jctx.arc(ox+dx,oy+dy,22,0,Math.PI*2);
+  jctx.fillStyle='rgba(255,255,255,0.55)'; jctx.fill();
+}
+
+/* ============================= AUDIO SYNTHESIS ============================= */
+let audioCtx = null;
+let purrGain = null;
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+
+  // Brown noise buffer for purr
+  const bufferSize = 2*audioCtx.sampleRate;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = noiseBuffer.getChannelData(0);
+  let lastOut = 0;
+  for(let i=0;i<bufferSize;i++){
+    const white = Math.random()*2-1;
+    data[i] = (lastOut + 0.02*white)/1.02;
+    lastOut = data[i];
+    data[i]*=3.5;
+  }
+  const noiseSrc = audioCtx.createBufferSource();
+  noiseSrc.buffer = noiseBuffer;
+  noiseSrc.loop = true;
+
+  const purrLPF = audioCtx.createBiquadFilter();
+  purrLPF.type='lowpass'; purrLPF.frequency.value=150;
+
+  purrGain = audioCtx.createGain();
+  purrGain.gain.value = 0;
+
+  const flutter = audioCtx.createOscillator();
+  flutter.type='sine'; flutter.frequency.value=25;
+  const flutterGain = audioCtx.createGain();
+  flutterGain.gain.value = 0.5;
+  flutter.connect(flutterGain);
+  flutterGain.connect(purrGain.gain);
+
+  noiseSrc.connect(purrLPF);
+  purrLPF.connect(purrGain);
+  purrGain.connect(audioCtx.destination);
+
+  noiseSrc.start();
+  flutter.start();
+
+  // Pink-ish ambient wind
+  const windBufferSize = 2*audioCtx.sampleRate;
+  const windBuffer = audioCtx.createBuffer(1, windBufferSize, audioCtx.sampleRate);
+  const wdata = windBuffer.getChannelData(0);
+  let b0=0,b1=0,b2=0;
+  for(let i=0;i<windBufferSize;i++){
+    const white = Math.random()*2-1;
+    b0 = 0.99765*b0 + white*0.0990460;
+    b1 = 0.96300*b1 + white*0.2965164;
+    b2 = 0.57000*b2 + white*1.0526913;
+    wdata[i] = (b0+b1+b2+white*0.1848)*0.11;
+  }
+  const windSrc = audioCtx.createBufferSource();
+  windSrc.buffer = windBuffer; windSrc.loop = true;
+  const windLPF = audioCtx.createBiquadFilter();
+  windLPF.type='lowpass';
+  const windGain = audioCtx.createGain();
+  windGain.gain.value = 0.06;
+  windSrc.connect(windLPF); windLPF.connect(windGain); windGain.connect(audioCtx.destination);
+  windSrc.start();
+  let t0 = audioCtx.currentTime;
+  setInterval(()=>{
+    windLPF.frequency.setTargetAtTime(300+Math.random()*500, audioCtx.currentTime, 2);
+  }, 3000);
+
+  scheduleTraffic();
+}
+function scheduleTraffic(){
+  setInterval(()=>{
+    if(Math.random()>0.6) playBeep();
+  }, 2500);
+}
+function playBeep(){
+  const osc = audioCtx.createOscillator();
+  osc.type='sine'; osc.frequency.value = 300+Math.random()*200;
+  const g = audioCtx.createGain();
+  g.gain.value=0;
+  const delay = audioCtx.createDelay(); delay.delayTime.value=0.25;
+  const fb = audioCtx.createGain(); fb.gain.value=0.3;
+  osc.connect(g); g.connect(audioCtx.destination);
+  g.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(audioCtx.destination);
+  const t = audioCtx.currentTime;
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(0.06, t+0.02);
+  g.gain.linearRampToValueAtTime(0, t+0.35);
+  osc.start(t); osc.stop(t+0.4);
+}
+function triggerMeow(){
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  osc.type='sawtooth';
+  const bandpass = audioCtx.createBiquadFilter();
+  bandpass.type='bandpass'; bandpass.frequency.value=1000; bandpass.Q.value=3;
+  const g = audioCtx.createGain();
+  osc.connect(bandpass); bandpass.connect(g); g.connect(audioCtx.destination);
+  const t = audioCtx.currentTime;
+  osc.frequency.setValueAtTime(600,t);
+  osc.frequency.exponentialRampToValueAtTime(300, t+0.5);
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(0.25, t+0.06);
+  g.gain.linearRampToValueAtTime(0.15, t+0.3);
+  g.gain.linearRampToValueAtTime(0, t+0.6);
+  osc.start(t); osc.stop(t+0.65);
+}
+document.getElementById('meowBtn').addEventListener('touchstart', e=>{e.preventDefault(); triggerMeow();});
+document.getElementById('meowBtn').addEventListener('click', triggerMeow);
+
+/* ============================= CAMERA ============================= */
+const camOffset = new THREE.Vector3(0,3.2,-6);
+const camLookOffset = new THREE.Vector3(0,1,2);
+let camYaw = 0, camPitch = 0.15;
+const idealCamPos = new THREE.Vector3();
+const idealLookAt = new THREE.Vector3();
+
+/* ============================= MAIN LOOP ============================= */
+let heading = 0;
+let currentSpeed = 0;
+const MAX_SPEED = 6.5;
+const clock = new THREE.Clock();
+let fpsCounter = 0, fpsTime = 0;
+const fpsEl = document.getElementById('fps');
+
+function update(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  processTouches();
+
+  camYaw -= input.lookX;
+  camPitch = Math.max(-0.5, Math.min(0.6, camPitch - input.lookY));
+
+  const moveMag = Math.min(1, Math.sqrt(input.moveX*input.moveX+input.moveY*input.moveY));
+  if(moveMag > 0.05){
+    const inputAngle = Math.atan2(input.moveX, -input.moveY);
+    heading = camYaw + inputAngle;
+    currentSpeed = THREE.MathUtils.lerp(currentSpeed, moveMag*MAX_SPEED, 0.12);
+  } else {
+    currentSpeed = THREE.MathUtils.lerp(currentSpeed, 0, 0.15);
+  }
+
+  catRoot.rotation.y = THREE.MathUtils.lerp(catRoot.rotation.y, heading, 0.2);
+  const dx = Math.sin(catRoot.rotation.y)*currentSpeed*dt;
+  const dz = Math.cos(catRoot.rotation.y)*currentSpeed*dt;
+  catRoot.position.x += dx;
+  catRoot.position.z += dz;
+
+  const halfRoad = STREET_HALF_WIDTH + SIDEWALK_WIDTH - 0.6;
+  catRoot.position.x = Math.max(-halfRoad, Math.min(halfRoad, catRoot.position.x));
+
+  animateCat(dt, currentSpeed/MAX_SPEED);
+
+  const camAngle = camYaw;
+  idealCamPos.set(
+    catRoot.position.x + Math.sin(camAngle)*camOffset.z*-1,
+    catRoot.position.y + camOffset.y + camPitch*2,
+    catRoot.position.z + Math.cos(camAngle)*camOffset.z*-1
+  );
+  camera.position.lerp(idealCamPos, 0.12);
+  idealLookAt.set(catRoot.position.x, catRoot.position.y+0.6, catRoot.position.z);
+  camera.lookAt(idealLookAt);
+
+  sunTarget.position.copy(catRoot.position);
+  sun.position.set(catRoot.position.x+40, catRoot.position.y+60, catRoot.position.z+20);
+
+  updateChunks(catRoot.position.z);
+
+  if(purrGain && audioCtx){
+    const targetGain = Math.min(1,currentSpeed/MAX_SPEED)*0.001 + 0.12;
+    purrGain.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.1);
+  }
+
+  fpsCounter++; fpsTime += dt;
+  if(fpsTime > 0.5){
+    fpsEl.textContent = Math.round(fpsCounter/fpsTime);
+    fpsCounter = 0; fpsTime = 0;
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(update);
+}
+
+/* ============================= START ============================= */
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  document.getElementById('startOverlay').style.display='none';
+  initAudio();
+  clock.start();
+  requestAnimationFrame(update);
+});
+
+})();
+</script>
+</body>
+</html>
