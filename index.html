@@ -1107,9 +1107,9 @@ function update(){
 
   const camAngle = camYaw;
   idealCamPos.set(
-    catRoot.position.x + Math.sin(camAngle)*camOffset.z*-1,
+    catRoot.position.x + Math.sin(camAngle)*camOffset.z,
     catRoot.position.y + camOffset.y + camPitch*2,
-    catRoot.position.z + Math.cos(camAngle)*camOffset.z*-1
+    catRoot.position.z + Math.cos(camAngle)*camOffset.z
   );
   camera.position.lerp(idealCamPos, 0.12);
   idealLookAt.set(catRoot.position.x, catRoot.position.y+0.6, catRoot.position.z);
