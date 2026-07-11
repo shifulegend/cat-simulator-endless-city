@@ -83,11 +83,37 @@ See `docs/ai/testing-strategy.md` for the full test matrix and known issues log.
 
 ## Contributing
 
-This is a personal/solo project run informally, but issues and pull requests are
-welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, branch naming
-conventions, and what to include in a PR. Please also review our
-[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) and, for vulnerability reports,
-[`SECURITY.md`](SECURITY.md) instead of filing a public issue.
+This project belongs to everyone who wants to help make it better — not just
+the original author. Whether you fix a typo, report a bug, suggest a wild new
+feature, or add collision detection, you're a contributor.
+
+- New here? Look for issues labeled [`good first issue`](https://github.com/shifulegend/cat-simulator-endless-city/labels/good%20first%20issue) or [`help wanted`](https://github.com/shifulegend/cat-simulator-endless-city/labels/help%20wanted).
+- Not sure where to start? Open a [discussion-style issue](https://github.com/shifulegend/cat-simulator-endless-city/issues/new) with your idea — even half-formed ones are welcome.
+- Full setup, branch conventions, and PR checklist: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- Community expectations: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+- Found a security issue? See [`SECURITY.md`](SECURITY.md) instead of filing a public issue.
+
+## Roadmap / ideas to pick up
+
+These are open invitations, not assignments — claim one in an issue comment
+before starting so two people don't duplicate work:
+
+- Collision detection (buildings, lamps, benches) — see `docs/ai/mistakes.md`
+- Cars reacting to the player / traffic lights
+- New city props, building styles, or weather effects
+- Additional pigeon/NPC behaviors
+- Accessibility improvements (colorblind-friendly UI, remappable controls)
+- More automated test coverage alongside the existing Playwright smoke tests
+
+Got a different idea? Open an issue — this list is a starting point, not a
+fence.
+
+## Contributors
+
+Thanks to everyone who files issues, opens PRs, or just plays and gives
+feedback — that's what keeps this project moving. Contributors are credited
+in PR history and release notes; ping a maintainer if you'd like a shoutout
+here too.
 
 ## License
 

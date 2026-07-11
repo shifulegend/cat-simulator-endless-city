@@ -1,28 +1,61 @@
-# Code of Conduct
+# Contributor Covenant Code of Conduct
 
-This is a small, friendly, community-driven side project. Keep it that way.
+## Our Pledge
 
-## Expected behavior
+We as members, contributors, and leaders pledge to make participation in our
+community a harassment-free experience for everyone, regardless of age, body
+size, visible or invisible disability, ethnicity, sex characteristics, gender
+identity and expression, level of experience, education, socio-economic
+status, nationality, personal appearance, race, religion, or sexual identity
+and orientation.
 
-- Be respectful and patient with contributors of all skill levels.
-- Give constructive feedback on code, ideas, and PRs — critique the work, not
-  the person.
-- Assume good intent, especially in a "vibe coding for fun" project like this
-  one.
+We pledge to act and interact in ways that contribute to an open, welcoming,
+diverse, inclusive, and healthy community.
 
-## Unacceptable behavior
+## Our Standards
 
-- Harassment, personal attacks, or discriminatory language.
-- Deliberately submitting harmful, obfuscated, or malicious code.
-- Sharing others' private information without consent.
+Examples of behavior that contributes to a positive environment:
+
+- Demonstrating empathy and kindness toward other people
+- Being respectful of differing opinions, viewpoints, and experiences
+- Giving and gracefully accepting constructive feedback
+- Accepting responsibility and apologizing to those affected by mistakes,
+  and learning from the experience
+- Focusing on what is best not just for us as individuals, but for the
+  overall community
+
+Examples of unacceptable behavior:
+
+- The use of sexualized language or imagery, and unwelcome sexual attention
+- Trolling, insulting or derogatory comments, and personal or political
+  attacks
+- Public or private harassment
+- Publishing others' private information without their explicit permission
+- Other conduct which could reasonably be considered inappropriate in a
+  professional or community setting
 
 ## Scope
 
-Applies to this repository's issues, pull requests, discussions, and any
-associated community spaces (e.g. linked subreddit threads).
+This Code of Conduct applies within all project spaces (issues, pull
+requests, discussions, code review) and also applies when an individual is
+officially representing the project in public spaces.
 
 ## Enforcement
 
-Maintainer (@shifulegend) may remove comments, close PRs/issues, or block
-contributors who violate this Code of Conduct. If you experience or witness
-unacceptable behavior, open an issue or contact the maintainer directly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be
+reported by opening a private security advisory via the repo's Security tab,
+or by contacting the maintainer (@shifulegend) directly on GitHub. All
+complaints will be reviewed and investigated promptly and fairly, and
+reporter privacy will be respected.
+
+## Enforcement Guidelines
+
+1. **Correction** — a private, written warning explaining the issue.
+2. **Warning** — a warning with consequences for continued behavior.
+3. **Temporary Ban** — a temporary ban from project interaction.
+4. **Permanent Ban** — a permanent ban from any project interaction.
+
+## Attribution
+
+Adapted from the [Contributor Covenant](https://www.contributor-covenant.org),
+version 2.1.
