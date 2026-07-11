@@ -3,17 +3,17 @@
 # Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files
 
 cff-version: 1.2.0
-message: "If you use this template, please cite it as below."
+message: "If you reference or reuse this project, please cite it as below."
 type: software
-title: "golden-template"
-abstract: "Cross-tool AI development golden template for GitHub Copilot, Claude Code, and Google Antigravity."
+title: "Endless City Cat"
+abstract: "A browser-based 3D cat simulator built with Three.js, featuring a procedurally generated, infinitely streaming city with no visible world edges."
 authors:
   - family-names: ""
     given-names: "shifulegend"
     alias: "shifulegend"
     website: "https://github.com/shifulegend"
 version: "1.0.0"
-date-released: "2026-06-27"
-url: "https://github.com/shifulegend/golden-template"
-repository-code: "https://github.com/shifulegend/golden-template"
+date-released: "2026-07-11"
+url: "https://github.com/shifulegend/cat-simulator-endless-city"
+repository-code: "https://github.com/shifulegend/cat-simulator-endless-city"
 license: MIT
