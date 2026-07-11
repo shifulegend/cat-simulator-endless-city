@@ -7,30 +7,26 @@
 <style>
   html,body{margin:0;padding:0;overflow:hidden;width:100%;height:100%;background:#111;touch-action:none;-webkit-user-select:none;user-select:none;font-family:sans-serif;}
   canvas{display:block;}
-  #ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;}
   #joyCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:11;}
-  #hud{position:fixed;top:10px;left:10px;color:#fff;font-size:13px;text-shadow:0 0 4px #000;pointer-events:none;opacity:.85;}
+  #hud{position:fixed;top:10px;left:10px;color:#fff;font-size:13px;text-shadow:0 0 4px #000;pointer-events:none;opacity:.85;line-height:1.5;}
   #meowBtn{position:fixed;bottom:24px;right:24px;width:74px;height:74px;border-radius:50%;background:rgba(255,150,60,.55);
     border:2px solid rgba(255,255,255,.6);color:#fff;font-size:12px;pointer-events:auto;z-index:12;display:flex;align-items:center;justify-content:center;}
   #startOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,15,.92);color:#fff;z-index:100;
     display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
   #startOverlay h1{margin:0 0 6px;font-size:26px;}
-  #startOverlay p{max-width:420px;font-size:14px;opacity:.85;line-height:1.4;}
+  #startOverlay p{max-width:440px;font-size:14px;opacity:.85;line-height:1.4;}
   #startBtn{margin-top:18px;padding:12px 28px;font-size:16px;background:#ff9a3c;border:none;border-radius:8px;color:#1a1a1a;font-weight:bold;pointer-events:auto;cursor:pointer;}
-  #loadBar{width:220px;height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:14px;display:none;}
-  #loadFill{width:0%;height:100%;background:#ff9a3c;}
 </style>
 </head>
 <body>
 <div id="startOverlay">
   <h1>&#128008; Endless City Cat</h1>
-  <p>Explore a procedurally generated, infinite city as a cat. Left side: move. Right side: look around. Tap the paw button to meow. On PC: WASD/Arrows to move, mouse-drag to look, Space to meow.</p>
-  <div id="loadBar"><div id="loadFill"></div></div>
+  <p>Roam a living, grid-laid-out city as a cat: multiple avenues, cross streets with traffic lights, plazas with fountains, roaming pigeons to chase, and cars driving by. Left side: move. Right side: look. Tap the paw to meow. On PC: WASD/Arrows + mouse-drag, Space to meow.</p>
   <button id="startBtn">Start</button>
 </div>
 <canvas id="c"></canvas>
 <canvas id="joyCanvas"></canvas>
-<div id="hud">FPS: <span id="fps">--</span></div>
+<div id="hud">FPS: <span id="fps">--</span><br>Pigeons chased: <span id="score">0</span></div>
 <div id="meowBtn">MEOW</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -49,7 +45,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 const scene = new THREE.Scene();
 const skyColor = new THREE.Color(0x8fb8d9);
 scene.background = skyColor;
-scene.fog = new THREE.FogExp2(0x8fb8d9, 0.012);
+scene.fog = new THREE.FogExp2(0x8fb8d9, 0.010);
 
 const camera = new THREE.PerspectiveCamera(62, window.innerWidth/window.innerHeight, 0.1, 500);
 camera.position.set(0,6,-10);
@@ -80,11 +76,7 @@ scene.add(sunTarget);
 sun.target = sunTarget;
 
 /* ============================= PROCEDURAL CANVAS TEXTURES ============================= */
-function makeCanvas(size){
-  const c = document.createElement('canvas');
-  c.width = size; c.height = size;
-  return c;
-}
+function makeCanvas(size){ const c = document.createElement('canvas'); c.width=size; c.height=size; return c; }
 function noiseFill(ctx,size,base,variance){
   const img = ctx.createImageData(size,size);
   for(let i=0;i<img.data.length;i+=4){
@@ -95,47 +87,40 @@ function noiseFill(ctx,size,base,variance){
 }
 function makeAsphaltTexture(){
   const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
-  noiseFill(ctx,size,55,26);
-  ctx.strokeStyle='rgba(255,220,120,0.55)';
-  ctx.lineWidth=3;
-  ctx.setLineDash([14,10]);
+  noiseFill(ctx,size,50,24);
+  ctx.strokeStyle='rgba(255,220,120,0.55)'; ctx.lineWidth=3; ctx.setLineDash([14,10]);
   ctx.beginPath(); ctx.moveTo(size/2,0); ctx.lineTo(size/2,size); ctx.stroke();
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  return tex;
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
+}
+function makeCrossStreetTexture(){
+  const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
+  noiseFill(ctx,size,48,22);
+  ctx.strokeStyle='rgba(255,255,255,0.75)'; ctx.lineWidth=8;
+  for(let x=8;x<size;x+=28){ ctx.beginPath(); ctx.moveTo(x,size*0.15); ctx.lineTo(x,size*0.85); ctx.stroke(); }
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
 }
 function makeConcreteTexture(){
   const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
-  noiseFill(ctx,size,190,22);
+  noiseFill(ctx,size,190,20);
   ctx.strokeStyle='rgba(120,120,120,0.4)'; ctx.lineWidth=2;
   for(let x=0;x<size;x+=64){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,size); ctx.stroke(); }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  return tex;
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
 }
 function makeBrickTexture(hue){
   const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
-  ctx.fillStyle = `hsl(${hue},10%,85%)`;
-  ctx.fillRect(0,0,size,size);
-  const bw=32,bh=16;
-  ctx.fillStyle = `hsl(${hue},45%,42%)`;
+  ctx.fillStyle = `hsl(${hue},10%,85%)`; ctx.fillRect(0,0,size,size);
+  const bw=32,bh=16; ctx.fillStyle = `hsl(${hue},45%,42%)`;
   let row=0;
   for(let y=0;y<size;y+=bh){
     const offset = (row%2===0)?0:bw/2;
-    for(let x=-bw;x<size+bw;x+=bw){
-      ctx.fillRect(x+offset+1,y+1,bw-2,bh-2);
-    }
+    for(let x=-bw;x<size+bw;x+=bw){ ctx.fillRect(x+offset+1,y+1,bw-2,bh-2); }
     row++;
   }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(1,3);
-  return tex;
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(1,3); return tex;
 }
 function makeWindowTexture(hue){
   const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
-  ctx.fillStyle = `hsl(${hue},30%,25%)`;
-  ctx.fillRect(0,0,size,size);
+  ctx.fillStyle = `hsl(${hue},30%,25%)`; ctx.fillRect(0,0,size,size);
   const cols=6, rows=10;
   for(let ry=0;ry<rows;ry++){
     for(let cx=0;cx<cols;cx++){
@@ -145,148 +130,318 @@ function makeWindowTexture(hue){
       ctx.fillRect(cx*w+4, ry*h+4, w-8, h-8);
     }
   }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  return tex;
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
+}
+function makeGrassTexture(){
+  const size=256, c=makeCanvas(size), ctx=c.getContext('2d');
+  noiseFill(ctx,size,90,26);
+  const img = ctx.getImageData(0,0,size,size);
+  for(let i=0;i<img.data.length;i+=4){ img.data[i]*=0.55; img.data[i+1]=Math.min(255,img.data[i+1]*1.05+40); img.data[i+2]*=0.4; }
+  ctx.putImageData(img,0,0);
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
 }
 
 const asphaltTex = makeAsphaltTexture();
+const crossTex = makeCrossStreetTexture();
 const concreteTex = makeConcreteTexture();
+const grassTex = makeGrassTexture();
 const buildingTexPool = [];
-for(let i=0;i<6;i++){
-  buildingTexPool.push(Math.random()>0.5 ? makeBrickTexture(20+i*40) : makeWindowTexture(190+i*20));
-}
+for(let i=0;i<6;i++){ buildingTexPool.push(Math.random()>0.5 ? makeBrickTexture(20+i*40) : makeWindowTexture(190+i*20)); }
 
 /* ============================= MATERIALS ============================= */
 const streetMat = new THREE.MeshLambertMaterial({map:asphaltTex});
-streetMat.map.repeat.set(4,40);
+streetMat.map.repeat.set(4,60);
+const crossStreetMat = new THREE.MeshLambertMaterial({map:crossTex});
 const sidewalkMat = new THREE.MeshLambertMaterial({map:concreteTex});
 sidewalkMat.map.repeat.set(2,20);
-const buildingMats = buildingTexPool.map(t=>new THREE.MeshLambertMaterial({map:t, flatShading:true}));
-const promenadeMat = new THREE.MeshLambertMaterial({color:0x9c8d6f, flatShading:true});
+const grassMat = new THREE.MeshLambertMaterial({map:grassTex, flatShading:true});
+grassMat.map.repeat.set(3,3);
+const buildingBaseMat = new THREE.MeshLambertMaterial({flatShading:true, map:buildingTexPool[0]});
 const lampMat = new THREE.MeshLambertMaterial({color:0x333333, flatShading:true});
 const lampGlowMat = new THREE.MeshBasicMaterial({color:0xffe37a});
 const benchMat = new THREE.MeshLambertMaterial({color:0x6b4a2b, flatShading:true});
+const fountainMat = new THREE.MeshLambertMaterial({color:0x8fa9b3, flatShading:true});
+const waterMat = new THREE.MeshLambertMaterial({color:0x3f8fbf, flatShading:true, transparent:true, opacity:0.85});
+const treeTrunkMat = new THREE.MeshLambertMaterial({color:0x5a3d22, flatShading:true});
+const treeLeafMat = new THREE.MeshLambertMaterial({color:0x3f7a35, flatShading:true});
+const pigeonMat = new THREE.MeshLambertMaterial({color:0xb9b9b9, flatShading:true});
+const carColors = [0xd94b4b,0x4b7fd9,0xd9d24b,0x4bd98f,0xffffff,0x2f2f2f];
 
-/* ============================= WORLD / CHUNK SYSTEM ============================= */
+/* ============================= CITY GRID CONSTANTS ============================= */
 const CHUNK_SIZE = 60;
-const NUM_CHUNKS = 9; // enough ahead+behind
-const STREET_HALF_WIDTH = 10;
-const SIDEWALK_WIDTH = 5;
+const NUM_CHUNKS = 9;
+const AVENUE_X = [-42, 0, 42];
+const STREET_HALF_WIDTH = 5;
+const SIDEWALK_WIDTH = 3;
+const CROSS_ST_DEPTH = 9;
+const TOTAL_WIDTH_HALF = 60;
+const MAX_BUILDINGS_PER_CHUNK = 26;
 
-const streetMesh = new THREE.Mesh(new THREE.PlaneGeometry(STREET_HALF_WIDTH*2, CHUNK_SIZE*NUM_CHUNKS+200), streetMat);
-streetMesh.rotation.x = -Math.PI/2;
-streetMesh.receiveShadow = true;
-scene.add(streetMesh);
+/* long continuous avenue strips (span whole recycled world length) */
+const worldLen = CHUNK_SIZE*NUM_CHUNKS + 200;
+AVENUE_X.forEach(ax=>{
+  const street = new THREE.Mesh(new THREE.PlaneGeometry(STREET_HALF_WIDTH*2, worldLen), streetMat);
+  street.rotation.x = -Math.PI/2;
+  street.position.x = ax;
+  street.receiveShadow = true;
+  scene.add(street);
+  [-1,1].forEach(side=>{
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(SIDEWALK_WIDTH,0.4,worldLen), sidewalkMat);
+    sw.position.set(ax+side*(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2),0.2,0);
+    sw.receiveShadow = true;
+    scene.add(sw);
+  });
+});
 
-const MAX_BUILDINGS_PER_CHUNK = 8;
-const totalBuildingSlots = NUM_CHUNKS*MAX_BUILDINGS_PER_CHUNK;
+/* ============================= BUILDINGS (instanced) ============================= */
 const boxGeo = new THREE.BoxGeometry(1,1,1);
-boxGeo.computeVertexNormals();
-
-const buildingMesh = new THREE.InstancedMesh(boxGeo, buildingMats[0], totalBuildingSlots);
-buildingMesh.castShadow = false;
-buildingMesh.receiveShadow = false;
-scene.add(buildingMesh);
-// Since InstancedMesh only supports single material, we vary color via instanceColor instead of swapping textures per instance.
-buildingMesh.material = new THREE.MeshLambertMaterial({flatShading:true, vertexColors:false});
+const totalBuildingSlots = NUM_CHUNKS*MAX_BUILDINGS_PER_CHUNK;
+const buildingMesh = new THREE.InstancedMesh(boxGeo, buildingBaseMat, totalBuildingSlots);
 buildingMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(totalBuildingSlots*3),3);
-buildingMesh.material.map = buildingTexPool[0];
+scene.add(buildingMesh);
+const dummy = new THREE.Object3D();
+const tmpColor = new THREE.Color();
+for(let i=0;i<totalBuildingSlots;i++){
+  dummy.position.set(0,-500,0); dummy.scale.set(0.01,0.01,0.01); dummy.updateMatrix();
+  buildingMesh.setMatrixAt(i,dummy.matrix);
+}
 
-const sidewalkGeo = new THREE.BoxGeometry(SIDEWALK_WIDTH, 0.5, CHUNK_SIZE);
-const sidewalkLeft = [];
-const sidewalkRight = [];
-
+/* ============================= DECOR GEOMETRIES ============================= */
 const lampGeo = new THREE.CylinderGeometry(0.08,0.1,3,6);
 const lampHeadGeo = new THREE.SphereGeometry(0.25,6,6);
 const benchSeatGeo = new THREE.BoxGeometry(1.6,0.15,0.5);
 const benchLegGeo = new THREE.BoxGeometry(0.1,0.4,0.5);
+const fountainBaseGeo = new THREE.CylinderGeometry(2,2.2,0.6,10);
+const fountainWaterGeo = new THREE.CylinderGeometry(1.6,1.6,0.15,10);
+const fountainSpoutGeo = new THREE.CylinderGeometry(0.15,0.2,1.2,8);
+const treeTrunkGeo = new THREE.CylinderGeometry(0.15,0.22,1.6,6);
+const treeLeafGeo = new THREE.ConeGeometry(1.0,1.8,6);
+const trafficPoleGeo = new THREE.CylinderGeometry(0.06,0.08,2.4,6);
+const trafficBoxGeo = new THREE.BoxGeometry(0.25,0.6,0.2);
+const trafficLightGeo = new THREE.SphereGeometry(0.08,6,6);
 
-const dummy = new THREE.Object3D();
-const tmpColor = new THREE.Color();
+/* ============================= PIGEONS (interactive NPCs) ============================= */
+const pigeonBodyGeo = new THREE.SphereGeometry(0.14,6,6);
+const pigeonHeadGeo = new THREE.SphereGeometry(0.08,6,6);
+let pigeonScore = 0;
+const scoreEl = document.getElementById('score');
+const allPigeons = [];
+function makePigeon(x,z){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(pigeonBodyGeo, pigeonMat);
+  body.scale.set(1,0.8,1.3);
+  const head = new THREE.Mesh(pigeonHeadGeo, pigeonMat);
+  head.position.set(0,0.08,0.14);
+  g.add(body,head);
+  g.position.set(x,0.14,z);
+  g.userData = {
+    state:'idle', idleTimer: Math.random()*2, dir: Math.random()*Math.PI*2,
+    home:new THREE.Vector3(x,0.14,z), flyPhase:0, caught:false
+  };
+  scene.add(g);
+  allPigeons.push(g);
+  return g;
+}
 
+/* ============================= TRAFFIC LIGHTS ============================= */
+const trafficLights = [];
+function makeTrafficLight(x,z){
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(trafficPoleGeo, lampMat);
+  pole.position.y = 1.2;
+  const box = new THREE.Mesh(trafficBoxGeo, lampMat);
+  box.position.y = 2.5;
+  const red = new THREE.Mesh(trafficLightGeo, new THREE.MeshBasicMaterial({color:0xff3030}));
+  red.position.set(0,2.68,0.12);
+  const green = new THREE.Mesh(trafficLightGeo, new THREE.MeshBasicMaterial({color:0x2a2a2a}));
+  green.position.set(0,2.42,0.12);
+  g.add(pole,box,red,green);
+  g.position.set(x,0,z);
+  g.userData = {red, green, timer: Math.random()*4};
+  scene.add(g);
+  trafficLights.push(g);
+  return g;
+}
+
+/* ============================= TRAFFIC CARS (ambient, along avenues) ============================= */
+const carPool = [];
+const carBodyGeo = new THREE.BoxGeometry(1.6,0.6,3.2);
+const carCabinGeo = new THREE.BoxGeometry(1.3,0.5,1.6);
+const wheelGeo = new THREE.CylinderGeometry(0.28,0.28,0.22,8);
+function makeCar(){
+  const g = new THREE.Group();
+  const color = carColors[Math.floor(Math.random()*carColors.length)];
+  const mat = new THREE.MeshLambertMaterial({color, flatShading:true});
+  const body = new THREE.Mesh(carBodyGeo, mat);
+  body.position.y = 0.4; body.castShadow = true;
+  const cabin = new THREE.Mesh(carCabinGeo, mat);
+  cabin.position.set(0,0.75,-0.1);
+  g.add(body,cabin);
+  [[-0.75,0.15,1.0],[0.75,0.15,1.0],[-0.75,0.15,-1.0],[0.75,0.15,-1.0]].forEach(p=>{
+    const wh = new THREE.Mesh(wheelGeo, lampMat);
+    wh.rotation.z = Math.PI/2;
+    wh.position.set(p[0],p[1],p[2]);
+    g.add(wh);
+  });
+  const ax = AVENUE_X[Math.floor(Math.random()*AVENUE_X.length)];
+  const lane = Math.random()>0.5 ? 1: -1;
+  g.position.set(ax + lane*1.6, 0, Math.random()*worldLen - worldLen/2);
+  g.rotation.y = lane>0 ? 0 : Math.PI;
+  g.userData = {lane, ax, speed: 4+Math.random()*3};
+  scene.add(g);
+  carPool.push(g);
+}
+for(let i=0;i<14;i++) makeCar();
+
+/* ============================= TREES helper ============================= */
+function addTree(parent,x,z){
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(treeTrunkGeo, treeTrunkMat);
+  trunk.position.y = 0.8;
+  const leaf = new THREE.Mesh(treeLeafGeo, treeLeafMat);
+  leaf.position.y = 1.9;
+  leaf.castShadow = true;
+  g.add(trunk,leaf);
+  g.position.set(x,0,z);
+  parent.add(g);
+}
+
+/* ============================= CHUNK CLASS: full grid slice ============================= */
 class Chunk {
   constructor(index){
     this.index = index;
     this.z = index*CHUNK_SIZE - (NUM_CHUNKS*CHUNK_SIZE)/2;
     this.group = new THREE.Group();
     scene.add(this.group);
-
-    this.sidewalkL = new THREE.Mesh(sidewalkGeo, sidewalkMat);
-    this.sidewalkL.position.set(-(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2),0.25,0);
-    this.sidewalkL.receiveShadow = true;
-    this.group.add(this.sidewalkL);
-
-    this.sidewalkR = new THREE.Mesh(sidewalkGeo, sidewalkMat);
-    this.sidewalkR.position.set(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2,0.25,0);
-    this.sidewalkR.receiveShadow = true;
-    this.group.add(this.sidewalkR);
-
     this.decor = new THREE.Group();
     this.group.add(this.decor);
-
     this.buildingSlotStart = index*MAX_BUILDINGS_PER_CHUNK;
+    this.pigeons = [];
+    this.trafficLights = [];
     this.regenerate();
+  }
+  clearDecor(){
+    while(this.decor.children.length){ this.decor.remove(this.decor.children[0]); }
+    this.pigeons.forEach(p=>{ scene.remove(p); const idx=allPigeons.indexOf(p); if(idx>=0) allPigeons.splice(idx,1); });
+    this.pigeons = [];
+    this.trafficLights.forEach(t=>{ scene.remove(t); const idx=trafficLights.indexOf(t); if(idx>=0) trafficLights.splice(idx,1); });
+    this.trafficLights = [];
   }
   regenerate(){
     this.group.position.z = this.z;
-    while(this.decor.children.length){
-      const c = this.decor.children.pop();
-      c.geometry && c.geometry.dispose && c.geometry.dispose();
-    }
-    const isPromenade = (Math.floor(Math.abs(this.z)/CHUNK_SIZE) % 5 === 0);
+    this.clearDecor();
 
-    for(let side=-1; side<=1; side+=2){
-      let cursorZ = -CHUNK_SIZE/2 + 3;
-      let slot = 0;
-      while(cursorZ < CHUNK_SIZE/2 - 3 && slot < MAX_BUILDINGS_PER_CHUNK/2){
-        const isAlley = Math.random() < 0.22;
-        if(isAlley){
-          cursorZ += 3 + Math.random()*1.5;
-          continue;
+    // cross street strip at the front boundary of this chunk
+    const crossZ = -CHUNK_SIZE/2;
+    const crossMesh = new THREE.Mesh(new THREE.PlaneGeometry(TOTAL_WIDTH_HALF*2, CROSS_ST_DEPTH), crossStreetMat);
+    crossMesh.rotation.x = -Math.PI/2;
+    crossMesh.position.set(0,0.01,crossZ);
+    crossMesh.receiveShadow = true;
+    this.decor.add(crossMesh);
+
+    // traffic lights at each avenue x cross-street intersection
+    AVENUE_X.forEach(ax=>{
+      [-1,1].forEach(side=>{
+        const tl = makeTrafficLight(ax+side*(STREET_HALF_WIDTH+1.2), this.z+crossZ+side*1.5);
+        this.trafficLights.push(tl);
+      });
+    });
+
+    // blocks between avenues -> 2 gaps, plus outer edges beyond outermost avenues
+    const blockCenters = [];
+    for(let i=0;i<AVENUE_X.length-1;i++){
+      blockCenters.push({ cx: (AVENUE_X[i]+AVENUE_X[i+1])/2, half:(AVENUE_X[i+1]-AVENUE_X[i])/2 - (STREET_HALF_WIDTH+SIDEWALK_WIDTH) , side:0});
+    }
+    // outer blocks beyond leftmost/rightmost avenue
+    blockCenters.push({cx: AVENUE_X[0]-16, half:10, side:-1});
+    blockCenters.push({cx: AVENUE_X[AVENUE_X.length-1]+16, half:10, side:1});
+
+    let slotCounter = 0;
+    const zStart = -CHUNK_SIZE/2 + CROSS_ST_DEPTH/2 + 1;
+    const zEnd = CHUNK_SIZE/2 - 1;
+
+    blockCenters.forEach((blk)=>{
+      const isPlaza = Math.random() < 0.28;
+      if(isPlaza){
+        const groundW = blk.half*2*0.9;
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(groundW, zEnd-zStart), grassMat);
+        ground.rotation.x = -Math.PI/2;
+        ground.position.set(blk.cx, 0.02, (zStart+zEnd)/2);
+        ground.receiveShadow = true;
+        this.decor.add(ground);
+
+        // fountain in center of plaza
+        const fountain = new THREE.Group();
+        const base = new THREE.Mesh(fountainBaseGeo, fountainMat); base.position.y=0.3; base.castShadow=true;
+        const water = new THREE.Mesh(fountainWaterGeo, waterMat); water.position.y=0.62;
+        const spout = new THREE.Mesh(fountainSpoutGeo, fountainMat); spout.position.y=1.2;
+        fountain.add(base,water,spout);
+        fountain.position.set(blk.cx, 0, (zStart+zEnd)/2);
+        this.decor.add(fountain);
+
+        // trees + benches around plaza
+        for(let k=0;k<4;k++){
+          const ang = k*Math.PI/2 + Math.PI/4;
+          const tx = blk.cx + Math.cos(ang)*groundW*0.32;
+          const tz = (zStart+zEnd)/2 + Math.sin(ang)*(zEnd-zStart)*0.32;
+          addTree(this.decor, tx, tz);
         }
-        const width = 6 + Math.random()*6;
-        const depth = 6 + Math.random()*6;
-        const height = 10 + Math.random()*70;
-        const xBase = side*(STREET_HALF_WIDTH+SIDEWALK_WIDTH+2+width/2+Math.random()*4);
-        const gIdx = this.buildingSlotStart + Math.floor(Math.random()*MAX_BUILDINGS_PER_CHUNK);
-        dummy.position.set(xBase, height/2, cursorZ);
-        dummy.scale.set(width, height, depth);
-        dummy.rotation.set(0,0,0);
-        dummy.updateMatrix();
-        buildingMesh.setMatrixAt(gIdx, dummy.matrix);
-        const hue = Math.random();
-        tmpColor.setHSL(0.55+hue*0.15, 0.15+Math.random()*0.2, 0.35+Math.random()*0.35);
-        buildingMesh.setColorAt(gIdx, tmpColor);
-        cursorZ += depth + 1 + Math.random()*2;
-        slot++;
-      }
-      if(isPromenade){
-        for(let pz=-CHUNK_SIZE/2+5; pz<CHUNK_SIZE/2-5; pz+=10){
+        for(let k=0;k<3;k++){
+          const bz = zStart + (k+0.5)*(zEnd-zStart)/3;
+          const bench = new THREE.Group();
+          const seat = new THREE.Mesh(benchSeatGeo, benchMat); seat.position.y=0.4;
+          const l1 = new THREE.Mesh(benchLegGeo, benchMat); l1.position.set(-0.6,0.2,0);
+          const l2 = new THREE.Mesh(benchLegGeo, benchMat); l2.position.set(0.6,0.2,0);
+          bench.add(seat,l1,l2);
+          bench.position.set(blk.cx - groundW*0.3, 0.5, bz);
+          bench.rotation.y = Math.PI/2;
+          this.decor.add(bench);
+        }
+        // pigeons flock in plaza
+        const flockCount = 3+Math.floor(Math.random()*4);
+        for(let k=0;k<flockCount;k++){
+          const px = blk.cx + (Math.random()-0.5)*groundW*0.7;
+          const pz = (zStart+zEnd)/2 + (Math.random()-0.5)*(zEnd-zStart)*0.6;
+          const pg = makePigeon(px, this.z+pz);
+          this.pigeons.push(pg);
+        }
+      } else {
+        // building row(s) with alleys, filling the block depth
+        let cursorZ = zStart;
+        while(cursorZ < zEnd - 3){
+          const isAlley = Math.random() < 0.18;
+          if(isAlley){ cursorZ += 2.5 + Math.random()*1.5; continue; }
+          const depth = 6 + Math.random()*7;
+          const width = Math.max(4, blk.half*2*(0.55+Math.random()*0.35));
+          const height = 8 + Math.random()*72;
+          const xJitter = (blk.half*2 - width) * (Math.random()-0.5)*0.4;
+          const gIdx = this.buildingSlotStart + (slotCounter % MAX_BUILDINGS_PER_CHUNK);
+          slotCounter++;
+          dummy.position.set(blk.cx + xJitter, height/2, cursorZ+depth/2);
+          dummy.scale.set(width, height, depth);
+          dummy.rotation.set(0,0,0);
+          dummy.updateMatrix();
+          buildingMesh.setMatrixAt(gIdx, dummy.matrix);
+          tmpColor.setHSL(0.55+Math.random()*0.15, 0.15+Math.random()*0.2, 0.35+Math.random()*0.35);
+          buildingMesh.setColorAt(gIdx, tmpColor);
+          cursorZ += depth + 1 + Math.random()*2;
+        }
+        // occasional lamp + pigeons on sidewalk edge of block
+        if(Math.random()>0.4){
           const lamp = new THREE.Group();
-          const pole = new THREE.Mesh(lampGeo, lampMat);
-          pole.position.y = 1.5;
-          pole.castShadow = false;
-          const head = new THREE.Mesh(lampHeadGeo, lampGlowMat);
-          head.position.y = 3;
-          lamp.add(pole, head);
-          lamp.position.set(side*(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2), 0.5, pz);
+          const pole = new THREE.Mesh(lampGeo, lampMat); pole.position.y=1.5;
+          const headL = new THREE.Mesh(lampHeadGeo, lampGlowMat); headL.position.y=3;
+          lamp.add(pole,headL);
+          lamp.position.set(blk.cx + Math.sign(blk.cx||1)*(blk.half-1), 0, (zStart+zEnd)/2);
           this.decor.add(lamp);
-
-          if(Math.random()>0.5){
-            const bench = new THREE.Group();
-            const seat = new THREE.Mesh(benchSeatGeo, benchMat);
-            seat.position.y = 0.4;
-            const l1 = new THREE.Mesh(benchLegGeo, benchMat); l1.position.set(-0.6,0.2,0);
-            const l2 = new THREE.Mesh(benchLegGeo, benchMat); l2.position.set(0.6,0.2,0);
-            bench.add(seat,l1,l2);
-            bench.position.set(side*(STREET_HALF_WIDTH+SIDEWALK_WIDTH/2+1.2), 0.5, pz+3);
-            bench.rotation.y = side>0? Math.PI:0;
-            this.decor.add(bench);
-          }
+        }
+        if(Math.random()>0.6){
+          const pg = makePigeon(blk.cx + (Math.random()-0.5)*4, this.z + zStart + Math.random()*(zEnd-zStart));
+          this.pigeons.push(pg);
         }
       }
-    }
+    });
+
     buildingMesh.instanceMatrix.needsUpdate = true;
     if(buildingMesh.instanceColor) buildingMesh.instanceColor.needsUpdate = true;
   }
@@ -376,15 +531,14 @@ const legFR = makeLeg(-0.22, 0.4);
 const legBL = makeLeg(0.22, -0.4);
 const legBR = makeLeg(-0.22, -0.4);
 const legs = [
-  {leg:legFL, phase:0,       baseX:0.22, baseZ:0.4},
-  {leg:legFR, phase:Math.PI, baseX:-0.22,baseZ:0.4},
-  {leg:legBL, phase:Math.PI, baseX:0.22, baseZ:-0.4},
-  {leg:legBR, phase:0,       baseX:-0.22,baseZ:-0.4}
+  {leg:legFL, phase:0},
+  {leg:legFR, phase:Math.PI},
+  {leg:legBL, phase:Math.PI},
+  {leg:legBR, phase:0}
 ];
 
 function solveLegIK(legObj, targetLocal){
   const L1 = upperLen, L2 = lowerLen;
-  const hipPos = new THREE.Vector3(0, 0, 0);
   const dx = targetLocal.x, dy = targetLocal.y, dz = targetLocal.z;
   let dist = Math.sqrt(dx*dx+dy*dy+dz*dz);
   dist = Math.min(dist, L1+L2-0.001);
@@ -414,17 +568,9 @@ function animateCat(dt, speed){
     targetVec.set(0, -legLength + yLift, zOff);
     solveLegIK(leg, targetVec);
   });
-  tailSegs.forEach((seg,i)=>{
-    seg.rotation.y = Math.sin(gaitTime*0.6 + i*0.5)*0.25;
-  });
+  tailSegs.forEach((seg,i)=>{ seg.rotation.y = Math.sin(gaitTime*0.6 + i*0.5)*0.25; });
   const bob = Math.sin(gaitTime*2)*0.02*Math.min(1,0.3+speed*1.4);
   torso.position.y = 0.55 + bob;
-}
-
-/* ============================= COLLISION (AABB simplified) ============================= */
-function getBuildingBoxAt(z){
-  // simplified: keep cat within street+sidewalk lane, push back near sidewalk edge only visually
-  return null;
 }
 
 /* ============================= CONTROLS ============================= */
@@ -443,18 +589,13 @@ window.addEventListener('mousemove', e=>{
   lastMouseX=e.clientX; lastMouseY=e.clientY;
 });
 
-// Touch joystick
 const joyCanvas = document.getElementById('joyCanvas');
 const jctx = joyCanvas.getContext('2d');
-function resizeJoyCanvas(){
-  joyCanvas.width = window.innerWidth;
-  joyCanvas.height = window.innerHeight;
-}
+function resizeJoyCanvas(){ joyCanvas.width = window.innerWidth; joyCanvas.height = window.innerHeight; }
 resizeJoyCanvas();
 
 const touches = {left:null, right:null};
 function touchSide(x){ return x < window.innerWidth/2 ? 'left':'right'; }
-
 canvas.addEventListener('touchstart', e=>{
   e.preventDefault();
   for(const t of e.changedTouches){
@@ -466,9 +607,7 @@ canvas.addEventListener('touchmove', e=>{
   e.preventDefault();
   for(const t of e.changedTouches){
     for(const side of ['left','right']){
-      if(touches[side] && touches[side].id===t.identifier){
-        touches[side].cx = t.clientX; touches[side].cy = t.clientY;
-      }
+      if(touches[side] && touches[side].id===t.identifier){ touches[side].cx = t.clientX; touches[side].cy = t.clientY; }
     }
   }
 }, {passive:false});
@@ -496,9 +635,8 @@ function processTouches(){
     let mag = Math.sqrt(dx*dx+dy*dy);
     if(mag>DEADZONE){
       const clamped = Math.min(mag, JOY_RADIUS);
-      const nx = dx/mag*clamped, ny = dy/mag*clamped;
-      input.moveX = nx/JOY_RADIUS;
-      input.moveY = ny/JOY_RADIUS;
+      input.moveX = (dx/mag)*clamped/JOY_RADIUS;
+      input.moveY = (dy/mag)*clamped/JOY_RADIUS;
     }
     drawJoy(touches.left.ox, touches.left.oy, touches.left.cx, touches.left.cy);
   }
@@ -528,7 +666,6 @@ function initAudio(){
   if(audioCtx) return;
   audioCtx = new (window.AudioContext||window.webkitAudioContext)();
 
-  // Brown noise buffer for purr
   const bufferSize = 2*audioCtx.sampleRate;
   const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const data = noiseBuffer.getChannelData(0);
@@ -540,30 +677,17 @@ function initAudio(){
     data[i]*=3.5;
   }
   const noiseSrc = audioCtx.createBufferSource();
-  noiseSrc.buffer = noiseBuffer;
-  noiseSrc.loop = true;
-
+  noiseSrc.buffer = noiseBuffer; noiseSrc.loop = true;
   const purrLPF = audioCtx.createBiquadFilter();
   purrLPF.type='lowpass'; purrLPF.frequency.value=150;
-
-  purrGain = audioCtx.createGain();
-  purrGain.gain.value = 0;
-
+  purrGain = audioCtx.createGain(); purrGain.gain.value = 0;
   const flutter = audioCtx.createOscillator();
   flutter.type='sine'; flutter.frequency.value=25;
-  const flutterGain = audioCtx.createGain();
-  flutterGain.gain.value = 0.5;
-  flutter.connect(flutterGain);
-  flutterGain.connect(purrGain.gain);
+  const flutterGain = audioCtx.createGain(); flutterGain.gain.value = 0.5;
+  flutter.connect(flutterGain); flutterGain.connect(purrGain.gain);
+  noiseSrc.connect(purrLPF); purrLPF.connect(purrGain); purrGain.connect(audioCtx.destination);
+  noiseSrc.start(); flutter.start();
 
-  noiseSrc.connect(purrLPF);
-  purrLPF.connect(purrGain);
-  purrGain.connect(audioCtx.destination);
-
-  noiseSrc.start();
-  flutter.start();
-
-  // Pink-ish ambient wind
   const windBufferSize = 2*audioCtx.sampleRate;
   const windBuffer = audioCtx.createBuffer(1, windBufferSize, audioCtx.sampleRate);
   const wdata = windBuffer.getChannelData(0);
@@ -577,37 +701,25 @@ function initAudio(){
   }
   const windSrc = audioCtx.createBufferSource();
   windSrc.buffer = windBuffer; windSrc.loop = true;
-  const windLPF = audioCtx.createBiquadFilter();
-  windLPF.type='lowpass';
-  const windGain = audioCtx.createGain();
-  windGain.gain.value = 0.06;
+  const windLPF = audioCtx.createBiquadFilter(); windLPF.type='lowpass';
+  const windGain = audioCtx.createGain(); windGain.gain.value = 0.06;
   windSrc.connect(windLPF); windLPF.connect(windGain); windGain.connect(audioCtx.destination);
   windSrc.start();
-  let t0 = audioCtx.currentTime;
-  setInterval(()=>{
-    windLPF.frequency.setTargetAtTime(300+Math.random()*500, audioCtx.currentTime, 2);
-  }, 3000);
+  setInterval(()=>{ windLPF.frequency.setTargetAtTime(300+Math.random()*500, audioCtx.currentTime, 2); }, 3000);
 
   scheduleTraffic();
 }
-function scheduleTraffic(){
-  setInterval(()=>{
-    if(Math.random()>0.6) playBeep();
-  }, 2500);
-}
+function scheduleTraffic(){ setInterval(()=>{ if(Math.random()>0.6) playBeep(); }, 2500); }
 function playBeep(){
   const osc = audioCtx.createOscillator();
   osc.type='sine'; osc.frequency.value = 300+Math.random()*200;
-  const g = audioCtx.createGain();
-  g.gain.value=0;
+  const g = audioCtx.createGain(); g.gain.value=0;
   const delay = audioCtx.createDelay(); delay.delayTime.value=0.25;
   const fb = audioCtx.createGain(); fb.gain.value=0.3;
   osc.connect(g); g.connect(audioCtx.destination);
   g.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(audioCtx.destination);
   const t = audioCtx.currentTime;
-  g.gain.setValueAtTime(0,t);
-  g.gain.linearRampToValueAtTime(0.06, t+0.02);
-  g.gain.linearRampToValueAtTime(0, t+0.35);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.06, t+0.02); g.gain.linearRampToValueAtTime(0, t+0.35);
   osc.start(t); osc.stop(t+0.4);
 }
 function triggerMeow(){
@@ -627,12 +739,25 @@ function triggerMeow(){
   g.gain.linearRampToValueAtTime(0, t+0.6);
   osc.start(t); osc.stop(t+0.65);
 }
+function playChirp(){
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  osc.type='triangle';
+  const g = audioCtx.createGain();
+  osc.connect(g); g.connect(audioCtx.destination);
+  const t = audioCtx.currentTime;
+  osc.frequency.setValueAtTime(1800,t);
+  osc.frequency.exponentialRampToValueAtTime(2600, t+0.08);
+  osc.frequency.exponentialRampToValueAtTime(1400, t+0.16);
+  g.gain.setValueAtTime(0.12,t);
+  g.gain.linearRampToValueAtTime(0,t+0.18);
+  osc.start(t); osc.stop(t+0.2);
+}
 document.getElementById('meowBtn').addEventListener('touchstart', e=>{e.preventDefault(); triggerMeow();});
 document.getElementById('meowBtn').addEventListener('click', triggerMeow);
 
 /* ============================= CAMERA ============================= */
 const camOffset = new THREE.Vector3(0,3.2,-6);
-const camLookOffset = new THREE.Vector3(0,1,2);
 let camYaw = 0, camPitch = 0.15;
 const idealCamPos = new THREE.Vector3();
 const idealLookAt = new THREE.Vector3();
@@ -644,6 +769,63 @@ const MAX_SPEED = 6.5;
 const clock = new THREE.Clock();
 let fpsCounter = 0, fpsTime = 0;
 const fpsEl = document.getElementById('fps');
+const catWorldPos = new THREE.Vector3();
+
+function updatePigeons(dt){
+  allPigeons.forEach(p=>{
+    catWorldPos.copy(catRoot.position);
+    const dx = p.position.x - catWorldPos.x;
+    const dz = p.position.z - catWorldPos.z;
+    const distSq = dx*dx+dz*dz;
+    const u = p.userData;
+    if(distSq < 6.5*6.5 && u.state!=='flee'){
+      u.state='flee'; u.dir = Math.atan2(dx,dz); u.flyPhase=0;
+      playChirp();
+      pigeonScore++; scoreEl.textContent = pigeonScore;
+    }
+    if(u.state==='flee'){
+      u.flyPhase += dt;
+      const speed = 5.5;
+      p.position.x += Math.sin(u.dir)*speed*dt;
+      p.position.z += Math.cos(u.dir)*speed*dt;
+      p.position.y = 0.14 + Math.min(1.2, u.flyPhase*1.5);
+      p.rotation.x = Math.sin(u.flyPhase*18)*0.3;
+      if(u.flyPhase > 2.2){
+        u.state='idle'; u.idleTimer = 1+Math.random()*2;
+        u.home.set(p.position.x, 0.14, p.position.z);
+      }
+    } else {
+      u.idleTimer -= dt;
+      p.position.y = 0.14;
+      if(u.idleTimer<0){
+        u.dir = Math.random()*Math.PI*2;
+        u.idleTimer = 1+Math.random()*2;
+      }
+      p.position.x += Math.sin(u.dir)*0.25*dt;
+      p.position.z += Math.cos(u.dir)*0.25*dt;
+      p.rotation.y = u.dir;
+    }
+  });
+}
+
+function updateTrafficLights(dt){
+  trafficLights.forEach(tl=>{
+    tl.userData.timer += dt;
+    const on = Math.floor(tl.userData.timer/3)%2===0;
+    tl.userData.red.material.color.setHex(on?0xff3030:0x2a2a2a);
+    tl.userData.green.material.color.setHex(on?0x2a2a2a:0x2ecc71);
+  });
+}
+
+function updateCars(dt, playerZ){
+  carPool.forEach(car=>{
+    car.position.z += car.userData.lane * car.userData.speed * dt;
+    const half = worldLen/2;
+    if(car.position.z - playerZ > half) car.position.z -= worldLen;
+    if(car.position.z - playerZ < -half) car.position.z += worldLen;
+    car.rotation.y = car.userData.lane>0 ? 0 : Math.PI;
+  });
+}
 
 function update(){
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -666,11 +848,12 @@ function update(){
   const dz = Math.cos(catRoot.rotation.y)*currentSpeed*dt;
   catRoot.position.x += dx;
   catRoot.position.z += dz;
-
-  const halfRoad = STREET_HALF_WIDTH + SIDEWALK_WIDTH - 0.6;
-  catRoot.position.x = Math.max(-halfRoad, Math.min(halfRoad, catRoot.position.x));
+  catRoot.position.x = Math.max(-TOTAL_WIDTH_HALF+4, Math.min(TOTAL_WIDTH_HALF-4, catRoot.position.x));
 
   animateCat(dt, currentSpeed/MAX_SPEED);
+  updatePigeons(dt);
+  updateTrafficLights(dt);
+  updateCars(dt, catRoot.position.z);
 
   const camAngle = camYaw;
   idealCamPos.set(
@@ -693,10 +876,7 @@ function update(){
   }
 
   fpsCounter++; fpsTime += dt;
-  if(fpsTime > 0.5){
-    fpsEl.textContent = Math.round(fpsCounter/fpsTime);
-    fpsCounter = 0; fpsTime = 0;
-  }
+  if(fpsTime > 0.5){ fpsEl.textContent = Math.round(fpsCounter/fpsTime); fpsCounter = 0; fpsTime = 0; }
 
   renderer.render(scene, camera);
   requestAnimationFrame(update);
