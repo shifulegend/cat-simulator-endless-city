@@ -83,8 +83,8 @@ See `docs/ai/testing-strategy.md` for the full test matrix and known issues log.
 
 ## Contributing
 
-This project belongs to everyone who wants to help make it better — not just
-the original author. Whether you fix a typo, report a bug, suggest a wild new
+This project belongs to everyone who wants to help make it better. Whether
+you fix a typo, report a bug, suggest a wild new
 feature, or add collision detection, you're a contributor.
 
 - New here? Look for issues labeled [`good first issue`](https://github.com/shifulegend/cat-simulator-endless-city/labels/good%20first%20issue) or [`help wanted`](https://github.com/shifulegend/cat-simulator-endless-city/labels/help%20wanted).

@@ -58,8 +58,8 @@ Follow the conventions in [`docs/BRANCHES.md`](docs/BRANCHES.md) and
 
 ## Scope
 
-This project is actively open to contributors of all experience levels — not
-just the original author. Small, well-scoped contributions (bug fixes, small
+This project is actively open to contributors of all experience levels.
+Small, well-scoped contributions (bug fixes, small
 features, docs improvements) are the easiest to review and merge and are a
 great way to get started. For bigger ideas, open an issue first so we can
 talk through direction together before you invest a lot of time — that's
