@@ -83,7 +83,11 @@ See `docs/ai/testing-strategy.md` for the full test matrix and known issues log.
 
 ## Contributing
 
-This is a personal/solo project without a formal contribution process. Issues and pull requests are welcome — see `docs/BRANCHES.md` for branch naming conventions.
+This is a personal/solo project run informally, but issues and pull requests are
+welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, branch naming
+conventions, and what to include in a PR. Please also review our
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) and, for vulnerability reports,
+[`SECURITY.md`](SECURITY.md) instead of filing a public issue.
 
 ## License
 

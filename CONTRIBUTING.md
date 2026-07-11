@@ -1,0 +1,63 @@
+# Contributing to Endless City Cat
+
+Thanks for wanting to poke at the cat simulator. This is a small, zero-build,
+single-file project — contributing should be just as low-friction.
+
+## Quick start
+
+```bash
+git clone https://github.com/shifulegend/cat-simulator-endless-city.git
+cd cat-simulator-endless-city
+python3 -m http.server 8000
+# open http://localhost:8000
+```
+
+No install step. `index.html` is self-contained.
+
+## Branching & commits
+
+Follow the conventions in [`docs/BRANCHES.md`](docs/BRANCHES.md) and
+[`docs/ai/commit-log-guidance.md`](docs/ai/commit-log-guidance.md):
+
+- Branch from `main` using `feat/*`, `fix/*`, or `chore/*` prefixes.
+- Keep each PR focused on one change (one feature, one fix).
+- Write a clear commit message describing what changed and why.
+
+## Before opening a PR
+
+- Test in a browser: load `index.html` locally and confirm no console errors.
+- Run through the control scheme (WASD/arrows, mouse-drag look, Space to
+  meow, and touch joysticks if you can test on a touch device).
+- If you touch procedural generation, verify revisiting a chunk still
+  reproduces the same layout (determinism matters here — see
+  [`docs/ai/architecture.md`](docs/ai/architecture.md)).
+- If CI (`.github/workflows/ci.yml`) runs Playwright smoke tests, make sure
+  they still pass.
+
+## What to include in a PR
+
+- What changed and why.
+- How you tested it (manual steps or automated).
+- Screenshots or a short clip for visual/gameplay changes — they're worth it
+  for a game.
+- Any known limitations or follow-up work.
+
+## Scope
+
+This is a solo/personal project run informally. Small, well-scoped
+contributions (bug fixes, small features, docs improvements) are the easiest
+to review and merge. For larger ideas, open an issue first to discuss
+direction before investing a lot of time.
+
+## Code style
+
+- Vanilla ES6, no build tooling, no external CDN dependencies.
+- Keep new code inside the existing IIFE scoping pattern in `index.html`
+  unless there's a good reason to split files.
+- Prefer readable code over cleverness — this project has no test framework
+  beyond the Playwright smoke tests, so regressions are easy to miss.
+
+## Reporting bugs / requesting features
+
+Use the issue templates. See [`SECURITY.md`](SECURITY.md) for how to report
+security issues instead of filing a public issue.
