@@ -1,78 +1,90 @@
-# Golden Template — shifulegend
+# Endless City Cat 🐱🏙️
 
-A cross-tool AI development template for starting any new repository with a documentation-first, modular, verification-first, security-first workflow.
+A browser-based 3D cat simulator built with Three.js. Roam an infinitely streaming, procedurally generated city as a stray cat — chase pigeons, dodge traffic, and explore plazas, fountains, and skyscrapers that regenerate seamlessly in every direction with no visible edges or loading seams.
 
-## What's Included
+**Play now:** https://shifulegend.github.io/cat-simulator-endless-city/
 
-### Shared Canonical Memory (`docs/ai/`)
-| File | Purpose |
-|------|---------|
-| `project-overview.md` | Project purpose, stack, architecture |
-| `engineering-rules.md` | Modularity, zero-hardcoding, verification rules |
-| `mistakes.md` | Central mistake log — read first every session |
-| `decision-log.md` | Timestamped decisions |
-| `change-trace.md` | Notable changes per sub-step |
-| `session-start-checklist.md` | Mandatory startup checklist |
-| `commit-log-guidance.md` | Commit message standards |
-| `tool-sync-policy.md` | How tool-specific files stay in sync |
-| `architecture.md` | System architecture, components, integrations |
-| `testing-strategy.md` | Test types, coverage targets, regression policy |
-| `context-efficiency.md` | Token-minimization: structural code search, repo-map, output compression, prompt-cache ordering |
+## Features
 
-### GitHub Copilot (`.github/`)
-- `copilot-instructions.md` — repo-wide instructions
-- `instructions/*.instructions.md` — scoped instructions (core, docs, tests, config)
-- `prompts/*.prompt.md` — reusable prompts (start-session, plan, implement, review, debug, memory)
+- **True 2D endless streaming** — a 5x5 pool of reusable city chunks continuously reassigns itself around the player based on grid position, so the world has no boundary in any direction (north, south, east, west).
+- **Deterministic procedural generation** — each city block's buildings, plazas, and props are generated from a seeded hash of its grid coordinates, so revisiting a location always reproduces the same layout.
+- **Realistic PBR-textured assets** — canvas-generated brick, window, asphalt, and grass textures feed physically-based materials (MeshStandardMaterial) instead of flat-colored blocks.
+- **Multi-tier buildings** — each building is assembled from a base plus 1-3 setback tiers with cornices, rooftop water tanks, AC units, or antennas for skyline variety.
+- **Organic cat rig** — inverse-kinematics-driven legs, a jointed tail, and rounded sphere-based body geometry replace boxy placeholder shapes.
+- **Interactive pigeons** — pigeons flee when the cat gets close, incrementing a chase counter and playing a chirp sound.
+- **Procedural audio** — a synthesized purr, ambient wind, traffic honks, and a meow are generated in-browser via the Web Audio API (no external audio files).
+- **Dual input schemes** — WASD/Arrow keys + mouse-drag look on desktop; dual virtual joysticks (movement + camera look) on touch devices.
 
-### Claude Code (`CLAUDE.md` + `.claude/`)
-- `CLAUDE.md` — project memory entrypoint
-- `.claude/rules/` — modular scoped rules (core, docs, tests, config)
-- `.claude/skills/` — reusable skills (session-start, project-memory, review-verify, implement)
+## Controls
 
-### Google Antigravity (`gemini/` + `.agents/`)
-- `gemini/GEMINI.md` — global Antigravity rules
-- `AGENTS.md` — cross-tool portability layer
-- `.agents/rules/` — scoped rules (core, docs, tests, config)
-- `.agents/workflows/` — reusable workflows (start-session, review-verify, update-memory)
+| Input | Action |
+|---|---|
+| `W` / `↑` | Move forward (cat faces away from camera, walks with its back to you) |
+| `S` / `↓` | Move backward |
+| `A` / `←`, `D` / `→` | Strafe / turn |
+| Mouse drag (hold + move) | Rotate camera |
+| `Space` | Meow |
+| Left touch joystick | Move |
+| Right touch joystick | Camera look |
+| MEOW button (on-screen) | Meow |
 
-### Security & Dependencies
-- `.github/workflows/ci.yml` — CI: lint, typecheck, test, build
-- `.github/dependabot.yml` — automated dependency updates
-- `CODEOWNERS` — auto-assign reviewers per path
+## Tech Stack
 
-### Developer Experience
-- `LICENSE` — MIT
-- `.gitignore` — comprehensive multi-stack gitignore
-- `.env.example` — safe env template (never commit `.env`)
-- `CITATION.cff` — GitHub-native citation support
-- `docs/SETUP.md` — first-time setup guide
-- `docs/BRANCHES.md` — branch strategy and protection rules
+- **Rendering**: Three.js (r128, self-hosted, no CDN dependency)
+- **Audio**: Web Audio API (procedural synthesis, zero audio asset files)
+- **Textures**: Runtime-generated HTML5 Canvas textures (no external image assets)
+- **Hosting**: GitHub Pages (static site, zero build step)
+- **Language**: Vanilla JavaScript (ES6, IIFE-scoped, single `index.html`)
 
-## How to Use
+## Project Structure
 
-### Create a New Repo from This Template
-1. Go to [github.com/shifulegend/golden-template](https://github.com/shifulegend/golden-template)
-2. Click **Use this template** → **Create a new repository**
-3. Fill in the new repo details and create
+```
+.
+├── index.html              # Entire game: markup, styles, Three.js library, and game logic
+├── docs/
+│   ├── ai/                 # AI agent session memory (architecture, mistakes, decisions)
+│   ├── SETUP.md            # Local development / testing setup
+│   └── BRANCHES.md         # Branching and release strategy
+├── .github/
+│   ├── workflows/          # CI: HTML/JS validation + Playwright smoke tests
+│   └── dependabot.yml      # Dependency update automation
+└── LICENSE                 # MIT
+```
 
-### After Creating from Template
-1. `cp .env.example .env` and fill in real values
-2. Update `docs/ai/project-overview.md` — purpose, stack, architecture
-3. Update `docs/ai/architecture.md` — components, data flow, integrations
-4. Update `docs/SETUP.md` — actual commands for your stack
-5. Uncomment the right `dependabot.yml` ecosystem block
-6. Enable branch protection rules (Settings → Branches)
-7. Search for `TODO` markers and fill them in
-8. Run your first AI session using the `start-session` prompt/skill/workflow
+## Local Development
 
-## Core Principles
-- **Extremely modular** — smallest sensible unit, explicit interfaces
-- **Zero hard-coding** — config files, env vars, schemas, or databases for all behavior
-- **Documentation-first** — docs updated proactively every session by AI agents
-- **Mistake-first sessions** — always read mistake log before coding
-- **Granular commits** — one small, reviewable sub-step per commit
-- **Security-first** — CODEOWNERS, Dependabot, CodeQL, secret scanning, .env.example
-- **Cross-tool portable** — Claude Code, GitHub Copilot, and Google Antigravity all supported
+This is a static, zero-build single-file game. To run locally:
 
-## AI Agent Dynamic Update Rule
-All `docs/ai/` files and tool adapter files are **dynamic**. Any AI agent working in a repo created from this template must proactively update them every session — without waiting for explicit user prompts. See `docs/ai/tool-sync-policy.md`.
+```bash
+git clone https://github.com/shifulegend/cat-simulator-endless-city.git
+cd cat-simulator-endless-city
+python3 -m http.server 8000
+# open http://localhost:8000
+```
+
+No `npm install` or build step is required — `index.html` is self-contained.
+
+## Testing
+
+Automated smoke tests use Playwright to load the live page in a headless browser and verify:
+- The start overlay renders and dismisses on click
+- Keyboard (WASD/Arrows), mouse-drag look, and Space-to-meow all register
+- Touch joystick (movement + look) works via synthetic `TouchEvent`s
+- No uncaught JavaScript errors during a full control pass
+- Cat orientation is correct relative to camera and movement direction (forward input shows the cat's back/tail receding from the camera)
+
+See `docs/ai/testing-strategy.md` for the full test matrix and known issues log.
+
+## Known Limitations
+
+- No collision detection yet — the cat can currently walk through buildings, lamps, and benches. AABB-based collision is the top-priority next feature (tracked in `docs/ai/mistakes.md` and project backlog).
+- Cars loop within their spawn chunk only; they do not yet react to the player or to traffic lights.
+- Audio requires a user gesture (the Start button) to unlock the Web Audio context, per browser autoplay policy.
+
+## Contributing
+
+This is a personal/solo project without a formal contribution process. Issues and pull requests are welcome — see `docs/BRANCHES.md` for branch naming conventions.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
