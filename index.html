@@ -669,6 +669,7 @@ function updateChunkStreaming(playerX, playerZ){
   });
 }
 
+<<<<<<< HEAD
 
 /* ============================= OPTIONAL: LOAD EXTERNAL CAT MODEL ============================= */
 // This code attempts to load an external glTF cat model with animation.
@@ -715,6 +716,8 @@ function loadCatModel() {
 loadCatModel();
 */
 
+=======
+>>>>>>> parent of eeabf1b (feat: replace procedural cat with animated glTF model (Sketchfab CC-BY))
 /* ============================= CAT AVATAR (rounder, more organic) ============================= */
 const catRoot = new THREE.Group();
 scene.add(catRoot);
@@ -907,18 +910,7 @@ function animateCat(dt, speed){
   gaitTime += dt * (2 + speed*4.5);
   const strideAmp = 0.18 * Math.min(1, 0.3+speed*1.4);
   const stepHeight = 0.14 * Math.min(1, 0.3+speed*1.4);
-  legs.forEach(({leg, phase
-  // Update cat animation mixer
-  if (catMixer && catLoaded) {
-    catMixer.update(dt);
-    if (runAction && speed > 0.1) {
-      runAction.paused = false;
-      runAction.setEffectiveTimeScale(1 + speed * 0.5);
-    } else if (runAction) {
-      runAction.paused = true;
-    }
-  }
-})=>{
+  legs.forEach(({leg, phase})=>{
     const phi = gaitTime + phase;
     const zOff = Math.sin(phi)*strideAmp;
     const yLift = Math.max(0, Math.sin(phi))*stepHeight;
