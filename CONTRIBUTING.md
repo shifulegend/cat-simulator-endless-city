@@ -30,11 +30,14 @@ contributors are especially welcome — look for issues labeled
 ```bash
 git clone https://github.com/shifulegend/cat-simulator-endless-city.git
 cd cat-simulator-endless-city
-python3 -m http.server 8000
-# open http://localhost:8000
+npm install
+npm run dev
+# open the local URL printed by the dev server
 ```
 
-No install step. `index.html` is self-contained.
+A build step (npm + bundler) is expected and encouraged if it improves
+graphics fidelity, code organization, or asset pipelines. GitHub Pages will
+serve the built static output, not necessarily the raw source.
 
 ## Branching & commits
 
@@ -75,9 +78,24 @@ collaboration, not a barrier.
 
 ## Code style
 
-- Vanilla ES6, no build tooling, no external CDN dependencies.
-- Keep new code inside the existing IIFE scoping pattern in `index.html`
-  unless there's a good reason to split files.
+- Modern ES modules. Split code into multiple files/modules for
+  maintainability — do not force everything into a single `index.html` or
+  a single IIFE.
+- **Use the best available tools, libraries, and assets — free and
+  open-source, well-maintained, and license-compatible (MIT, CC0, CC-BY,
+  Apache-2.0, etc.). Don't reinvent the wheel**: prefer proven libraries
+  (e.g. Three.js ecosystem addons, physics engines like Rapier or
+  Cannon-es, animation/rigging tools) and high-quality free assets (Poly
+  Haven, ambientCG, Sketchfab CC0/CC-BY, Freesound.org, Mixamo) over
+  hand-rolled equivalents, as long as the license permits redistribution.
+- **Graphics realism bar: Ghost of Tsushima.** New rendering work (lighting,
+  materials, environment, post-processing, animation) should be benchmarked
+  against Ghost of Tsushima's visual quality — physically based lighting,
+  rich color grading, believable foliage/weather, and cinematic
+  post-processing — as a directional target, not necessarily a literal
+  pixel match.
+- **Every third-party asset or library addition must be added to
+  `credits.html`** with name, source URL, author, and license.
 - Prefer readable code over cleverness — this project has no test framework
   beyond the Playwright smoke tests, so regressions are easy to miss.
 

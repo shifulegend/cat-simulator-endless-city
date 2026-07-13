@@ -6,11 +6,12 @@
 A browser-based 3D cat simulator ("Endless City Cat"). The player controls a cat roaming a procedurally generated, infinitely streaming city, chasing pigeons and exploring plazas and skyscrapers. Built for casual play directly in the browser, no install required.
 
 ## Stack & Key Dependencies
-- **Language**: Vanilla JavaScript (ES6), single-file architecture
-- **Rendering**: Three.js r128 (vendored inline in `index.html`, no CDN/npm dependency)
-- **Audio**: Web Audio API (procedural synthesis — no audio files)
-- **Textures**: Runtime HTML5 Canvas-generated textures (no image assets)
-- **Hosting**: GitHub Pages (static, zero build step)
+- **Language**: Modern JavaScript (ES modules), multi-file architecture preferred over a single-file build.
+- **Rendering**: Three.js (npm package, via Vite/bundler), targeting a Ghost of Tsushima-level realism bar: PBR materials, HDRI image-based lighting, real-time shadows, post-processing (bloom, SSAO/GTAO, DOF, ACES tone mapping), atmospheric fog.
+- **Audio**: Web Audio API for procedural synthesis, plus free/open-source CC0/CC-BY audio assets (e.g. Freesound.org) where realism benefits, credited in `credits.html`.
+- **Textures/Models**: Prefer free/open-source PBR textures and glTF models (Poly Haven, ambientCG, Sketchfab CC0/CC-BY) over hand-rolled Canvas textures, for realism.
+- **Hosting**: GitHub Pages, serving a built static output (a build step via Vite + GitHub Actions is expected and encouraged).
+- **Dependencies**: No blanket restriction on external dependencies or frameworks — use the best free/open-source tool for the job; avoid reinventing solved problems.
 - **Testing**: Playwright (Python) for headless browser smoke tests, run manually/via CI
 
 ## Architecture Overview
