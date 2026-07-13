@@ -34,3 +34,44 @@ A change is done when:
 - All inputs must be validated.
 - Security-sensitive areas must be documented and flagged.
 - Report vulnerabilities via SECURITY.md process.
+
+## Frameworks, Dependencies & Assets
+- There is no restriction against external dependencies, build tooling, or a single-HTML-file architecture. Choose the best free/open-source framework, library, or asset pipeline for the job.
+- Do not reinvent solved problems: prefer well-maintained open-source libraries (physics, animation, audio, UI) and free/open assets over hand-rolled equivalents when license permits.
+- Every third-party library, model, texture, sound, or font added to the project must be recorded in `credits.html` with name, source URL, author, and license (MIT, CC0, CC-BY, Apache-2.0, etc.).
+- Verify license compatibility before adding any asset or dependency; avoid anything with unclear or restrictive licensing (e.g. CC-BY-NC, proprietary EULAs) unless explicitly approved.
+
+## Graphics Realism Bar
+- Benchmark all rendering, lighting, material, and environment work against Ghost of Tsushima's visual quality as the aspirational target: physically based materials, HDRI/IBL lighting, dynamic shadows, atmospheric fog, and cinematic post-processing (bloom, SSAO/GTAO, depth of field, ACES filmic tone mapping, color grading).
+- Prioritize believability of motion and physics (weight, momentum, secondary motion, foot/ground contact) alongside visual fidelity — "feel realistic" applies to gameplay feel, not just pixels.
+- **Poly Haven / ambientCG are acceptable for generic ground/wall/prop PBR textures and HDRIs, but their photo-tiled, non-hero-asset quality does not match the bespoke, hand-authored, high-density detail Sucker Punch used for Tsushima's foliage, terrain, and characters.** Do not treat them as the primary source for anything meant to be a visual centerpiece (the cat itself, hero buildings, foreground foliage).
+- For hero-quality assets, prefer, in order of preference:
+  1. **Fab (formerly Quixel Megascans)** — https://www.fab.com/ — real-world photogrammetry scans (rock, bark, ground, foliage, fabric) at a fidelity level closer to what AAA studios like Sucker Punch use. Check current licensing per-asset (some free, some paid) before use; only use assets whose license permits redistribution in an open-source repo, or reference them as a "recommended purchase" in credits.html instead of vendoring them.
+  2. **Sketchfab photogrammetry / hand-modeled hero assets (CC0/CC-BY only)** — https://sketchfab.com/ — filter to "Downloadable" + free license, and prefer scanned or hero-quality hand-sculpted models over generic low-poly kits.
+  3. **SpeedTree free/indie tier or Blender-generated foliage** for grass/tree wind systems — Ghost of Tsushima's grass and wind are true 3D geometry driven by a shared windfield, not billboards; a Three.js equivalent should use GPU-instanced grass blades with a vertex shader driven by a wind field, not a flat animated texture.
+  4. **Poly Haven / ambientCG** as a fallback only for background/non-hero surfaces (distant roads, generic walls) where budget or licensing rules out the above.
+
+### Documented Reference Examples (Ghost of Tsushima Benchmark)
+Use these as the concrete technical reference points when implementing or reviewing realism work — link to the relevant one in commit messages/PRs when a change targets a specific technique:
+- **Lighting & atmosphere**: "Real-Time Samurai Cinema: Lighting, Atmosphere, and Tonemapping in Ghost of Tsushima" — SIGGRAPH 2021 Advances in Real-Time Rendering talk by Jasmin Patry (Sucker Punch). Covers SH irradiance probes, sky/sun bounce light, haze/cloud/particle multiple-scattering, and custom tone mapping. https://www.youtube.com/watch?v=GOee6lcEbWg
+- **Wind & foliage system**: "Blowing from the West: Simulating Wind in Ghost of Tsushima" — GDC 2021 talk by Bill Rockenbeck (Sucker Punch). Describes the shared windfield driving grass, trees, banners, and cloth. https://www.youtube.com/watch?v=d61_o4CGQd8
+- **Overall tech breakdown**: Digital Foundry's Ghost of Tsushima tech review, covering foliage density, LOD strategy, and post-processing choices. https://www.digitalfoundry.net/articles/digitalfoundry-2020-ghost-of-tsushima-tech-review
+- **Three.js-native realism precedent**: real-time path-traced global illumination in Three.js (Erich Loftis's THREE.js-PathTracing-Renderer) as a proof that near-photorealistic lighting is achievable in a browser context; use as inspiration for GI/reflection approaches even if full path tracing is too expensive for this game's real-time budget. https://github.com/erichlof/THREE.js-PathTracing-Renderer
+- When proposing a new rendering feature (grass, water, skin/fur shading, atmospheric scattering), cite which of the above techniques it is approximating and note any deliberate simplification made for real-time browser performance.
+
+## Backend / Database — Supabase (Chosen)
+- **Supabase** is the recommended backend for any persistent data (leaderboards, save state, chase counters, cosmetic unlocks): it is open-source (Apache-2.0, self-hostable via Docker — https://github.com/supabase/supabase), Postgres-based, and has a free hosted tier (500MB DB, 50K auth MAU, 1GB storage) that fits a GitHub Pages side project.
+- Only the public **anon key** goes in frontend code — it is designed to be exposed. Access control is enforced entirely through **Postgres Row Level Security (RLS) policies** (e.g. "anyone can insert a score row with score <= X and player_name length <= Y", "no one can update/delete other players' rows").
+- Never put the **service_role key** in any file that reaches the browser bundle or a public repo. If server-side logic is needed (e.g. anti-cheat score validation), use a **Supabase Edge Function** — the service_role key lives only in Supabase's own secret store, injected as an environment variable at deploy time, never committed to Git.
+- Self-hosting Supabase (Docker Compose) is a documented fallback if the hosted free tier is outgrown or if full data ownership is required — same open-source stack either way.
+
+## Supporting Framework & Tooling Recommendations
+The rules below extend the "no reinventing the wheel" principle to specific, currently-missing capabilities. All choices are free and open-source (MIT/Apache-2.0/BSD unless noted):
+- **Physics**: [Rapier](https://rapier.rs/) (Rust/WASM, Apache-2.0) via its `@dimforge/rapier3d` npm package — for collision detection (top roadmap item), cat movement weight, and prop interactions. Preferred over `cannon-es` for performance, but either is acceptable.
+- **Post-processing**: Three.js's own `postprocessing` addon or the community [pmndrs/postprocessing](https://github.com/pmndrs/postprocessing) (Zlib) library for bloom, SSAO/GTAO, depth of field, and ACES tone mapping — avoid hand-writing custom composite shaders unless a specific effect is unsupported.
+- **Animation & tweening**: [GSAP](https://gsap.com/) (now fully MIT-licensed as of 2025) for UI/camera tweening, or Three.js's built-in `AnimationMixer` for skeletal/glTF animation clips (e.g. Mixamo-rigged cat/NPC animations).
+- **Procedural grass/foliage**: GPU-instanced geometry (`InstancedMesh` / `InstancedBufferGeometry`) with a custom vertex shader driven by a wind-noise texture, matching the Ghost of Tsushima windfield approach — not billboard sprites.
+- **Asset compression**: [Draco](https://github.com/google/draco) (Apache-2.0) for glTF geometry compression and [KTX2/Basis Universal](https://github.com/BinomialLLC/basis_universal) for GPU texture compression, both with first-class Three.js loader support — keeps hi-fidelity assets from Fab/Sketchfab performant on GitHub Pages' CDN.
+- **State/debug tooling**: [lil-gui](https://github.com/georgealways/lil-gui) (MIT) for a runtime debug panel (lighting/exposure tweaks during development) and [stats.js](https://github.com/mrdoob/stats.js) (MIT) for an FPS/frame-time overlay — both trivial to strip from production builds via Vite env flags.
+- **Linting/formatting**: ESLint + Prettier (MIT) added to CI (`.github/workflows/ci.yml`) alongside the existing Playwright smoke tests, to keep multi-file ES module code consistent as more contributors join.
+- **Analytics (optional)**: If usage analytics are ever wanted, prefer a privacy-respecting open-source option — [Plausible](https://github.com/plausible/analytics) (AGPL-3.0, self-hosted or paid cloud) or [Umami](https://github.com/umami-software/umami) (MIT, self-hosted) — over Google Analytics, to avoid a cookie-consent banner on a simple game page.

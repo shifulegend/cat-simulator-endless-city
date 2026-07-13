@@ -30,11 +30,18 @@ A browser-based 3D cat simulator built with Three.js. Roam an infinitely streami
 
 ## Tech Stack
 
-- **Rendering**: Three.js (r128, self-hosted, no CDN dependency)
-- **Audio**: Web Audio API (procedural synthesis, zero audio asset files)
-- **Textures**: Runtime-generated HTML5 Canvas textures (no external image assets)
-- **Hosting**: GitHub Pages (static site, zero build step)
-- **Language**: Vanilla JavaScript (ES6, IIFE-scoped, single `index.html`)
+- **Rendering**: Three.js (ES modules, WebGPURenderer where supported with WebGLRenderer fallback), targeting a Ghost of Tsushima-style realism bar — full PBR materials, HDRI-based image-based lighting, real-time shadows, post-processing (bloom, SSAO/GTAO, depth of field, ACES filmic tone mapping), and volumetric/atmospheric fog.
+- **Physics**: [Rapier](https://rapier.rs/) (Rust/WASM, Apache-2.0) for collision detection and movement weight/momentum.
+- **Post-processing**: [pmndrs/postprocessing](https://github.com/pmndrs/postprocessing) or Three.js's own postprocessing addon for bloom, SSAO/GTAO, DOF, and ACES tone mapping.
+- **Animation**: Three.js `AnimationMixer` for glTF/Mixamo skeletal clips; [GSAP](https://gsap.com/) (MIT) for UI/camera tweening.
+- **Build tooling**: Vite for local dev, npm dependency management, and optimized production builds. There is **no requirement to keep the game HTML-only, single-file, or dependency-free** — use whatever well-maintained, free/open-source library or asset pipeline best serves realism, performance, and maintainability.
+- **Backend/Database**: [Supabase](https://github.com/supabase/supabase) (open-source, Apache-2.0, self-hostable, free hosted tier) for leaderboards and save data — accessed from the browser via the public `anon` key with Postgres Row Level Security enforcing access, never the `service_role` key.
+- **Audio**: Web Audio API for procedural sound, supplemented by free/open-source CC0 or Creative Commons sound assets (e.g. from Freesound.org) where richer realism is needed — always credited on the Credits page.
+- **Textures & models**: Hero assets (cat, foreground buildings, foliage) sourced from [Fab/Quixel Megascans](https://www.fab.com/) and curated Sketchfab (CC0/CC-BY) models; Poly Haven and ambientCG used only as a fallback for generic background surfaces. Draco and KTX2/Basis Universal compression keep hi-fidelity assets performant on GitHub Pages.
+- **Hosting**: GitHub Pages (static output). A build step producing a static `dist/` folder deployed via GitHub Actions is fine — GitHub Pages only requires the final output to be static HTML/JS/CSS/assets.
+- **Language**: Modern JavaScript (ES modules), organized into multiple files/modules rather than forced into a single `index.html` or a single IIFE.
+- **Dev tooling**: [lil-gui](https://github.com/georgealways/lil-gui) for a runtime debug panel and [stats.js](https://github.com/mrdoob/stats.js) for an FPS overlay during development; ESLint + Prettier in CI for code consistency.
+- **Credits**: A dedicated `credits.html` page, opened via a small "Credits" button on the game's start/overlay screen, lists every third-party library, asset, texture, model, sound, and font used, with license and source links.
 
 ## Project Structure
 
@@ -53,16 +60,17 @@ A browser-based 3D cat simulator built with Three.js. Roam an infinitely streami
 
 ## Local Development
 
-This is a static, zero-build single-file game. To run locally:
+The project may use a build step (npm + Vite or similar) if it improves graphics quality, asset loading, or code organization. To run locally:
 
 ```bash
 git clone https://github.com/shifulegend/cat-simulator-endless-city.git
 cd cat-simulator-endless-city
-python3 -m http.server 8000
-# open http://localhost:8000
+npm install
+npm run dev
+# open the local URL Vite prints (typically http://localhost:5173)
 ```
 
-No `npm install` or build step is required — `index.html` is self-contained.
+If a build step is added, CI/CD (GitHub Actions) should build the project and deploy the compiled static output to GitHub Pages automatically on merge to `main`.
 
 ## Testing
 
