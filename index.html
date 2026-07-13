@@ -46,7 +46,17 @@
 "use strict";
 
 /* ============================= GLOBAL SETUP ============================= */
-const canvas = document.getElementById('c');
+const 
+    // Load GLTFLoader from Three.js examples (CDN)
+    // This is needed because the vendored Three.js r128 doesn't include GLTFLoader
+    const GLTFLoaderScript = document.createElement('script');
+    GLTFLoaderScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+    document.head.appendChild(GLTFLoaderScript);
+    GLTFLoaderScript.onload = function() {
+      console.log('✓ GLTFLoader loaded');
+    };
+
+canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -660,10 +670,10 @@ function updateChunkStreaming(playerX, playerZ){
 }
 
 
-/* ============================= LOAD ANIMATED CAT MODEL ============================= */
-// Model: "Lowpoly Cat Rig + Run Animation" by Daily Lowpoly (CC-BY-4.0)
-// https://sketchfab.com/3d-models/lowpoly-cat-rig-run-animation-c36df576c9ae4ed28e89069b1a2f427a
-
+/* ============================= OPTIONAL: LOAD EXTERNAL CAT MODEL ============================= */
+// This code attempts to load an external glTF cat model with animation.
+// If it fails, the procedural cat (defined below) will be used instead.
+/*
 let catModel = null;
 let catMixer = null;
 let runAction = null;
@@ -671,44 +681,39 @@ let catLoaded = false;
 const catModelGroup = new THREE.Group();
 scene.add(catModelGroup);
 
-const loader = new THREE.GLTFLoader();
-loader.load(
-  'assets/cat/scene.gltf',
-  function(gltf) {
-    catModel = gltf.scene;
-    catModel.scale.set(0.5, 0.5, 0.5); // Adjust scale to match game
-    catModel.position.set(0, 0, 0);
-    catModelGroup.add(catModel);
-
-    // Setup animations
-    if (gltf.animations && gltf.animations.length > 0) {
-      catMixer = new THREE.AnimationMixer(catModel);
-      runAction = catMixer.clipAction(gltf.animations[0]); // 'run' animation
-      runAction.setLoop(THREE.LoopRepeat, Infinity);
-      runAction.enabled = true;
-      runAction.play();
-    }
-
-    catLoaded = true;
-    console.log('✓ Cat model loaded successfully');
-  },
-  function(xhr) {
-    // Progress callback
-    if (xhr && xhr.total > 0) {
-      const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
-      console.log(`Cat model loading: ${percent}%`);
-    }
-  },
-  function(error) {
-    console.error('✗ Error loading cat model:', error);
-    // Fallback: keep the procedural cat visible
-    catRoot.visible = true;
+function loadCatModel() {
+  if (typeof THREE.GLTFLoader === 'undefined') {
+    console.log('ℹ️ GLTFLoader not available, using procedural cat');
+    return;
   }
-);
 
-// Hide procedural cat, we'll use the loaded model
-catRoot.visible = false;
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+    'assets/cat/scene.gltf',
+    function(gltf) {
+      catModel = gltf.scene;
+      catModel.scale.set(0.5, 0.5, 0.5);
+      catModelGroup.add(catModel);
 
+      if (gltf.animations && gltf.animations.length > 0) {
+        catMixer = new THREE.AnimationMixer(catModel);
+        runAction = catMixer.clipAction(gltf.animations[0]);
+        runAction.setLoop(THREE.LoopRepeat, Infinity);
+        runAction.play();
+      }
+      catLoaded = true;
+      catRoot.visible = false; // Hide procedural cat
+      console.log('✓ Cat model loaded');
+    },
+    undefined,
+    function(error) {
+      console.log('ℹ️ Using procedural cat (external model failed)');
+      catRoot.visible = true;
+    }
+  );
+}
+loadCatModel();
+*/
 
 /* ============================= CAT AVATAR (rounder, more organic) ============================= */
 const catRoot = new THREE.Group();
