@@ -659,6 +659,57 @@ function updateChunkStreaming(playerX, playerZ){
   });
 }
 
+
+/* ============================= LOAD ANIMATED CAT MODEL ============================= */
+// Model: "Lowpoly Cat Rig + Run Animation" by Daily Lowpoly (CC-BY-4.0)
+// https://sketchfab.com/3d-models/lowpoly-cat-rig-run-animation-c36df576c9ae4ed28e89069b1a2f427a
+
+let catModel = null;
+let catMixer = null;
+let runAction = null;
+let catLoaded = false;
+const catModelGroup = new THREE.Group();
+scene.add(catModelGroup);
+
+const loader = new THREE.GLTFLoader();
+loader.load(
+  'assets/cat/scene.gltf',
+  function(gltf) {
+    catModel = gltf.scene;
+    catModel.scale.set(0.5, 0.5, 0.5); // Adjust scale to match game
+    catModel.position.set(0, 0, 0);
+    catModelGroup.add(catModel);
+
+    // Setup animations
+    if (gltf.animations && gltf.animations.length > 0) {
+      catMixer = new THREE.AnimationMixer(catModel);
+      runAction = catMixer.clipAction(gltf.animations[0]); // 'run' animation
+      runAction.setLoop(THREE.LoopRepeat, Infinity);
+      runAction.enabled = true;
+      runAction.play();
+    }
+
+    catLoaded = true;
+    console.log('✓ Cat model loaded successfully');
+  },
+  function(xhr) {
+    // Progress callback
+    if (xhr && xhr.total > 0) {
+      const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+      console.log(`Cat model loading: ${percent}%`);
+    }
+  },
+  function(error) {
+    console.error('✗ Error loading cat model:', error);
+    // Fallback: keep the procedural cat visible
+    catRoot.visible = true;
+  }
+);
+
+// Hide procedural cat, we'll use the loaded model
+catRoot.visible = false;
+
+
 /* ============================= CAT AVATAR (rounder, more organic) ============================= */
 const catRoot = new THREE.Group();
 scene.add(catRoot);
@@ -851,7 +902,18 @@ function animateCat(dt, speed){
   gaitTime += dt * (2 + speed*4.5);
   const strideAmp = 0.18 * Math.min(1, 0.3+speed*1.4);
   const stepHeight = 0.14 * Math.min(1, 0.3+speed*1.4);
-  legs.forEach(({leg, phase})=>{
+  legs.forEach(({leg, phase
+  // Update cat animation mixer
+  if (catMixer && catLoaded) {
+    catMixer.update(dt);
+    if (runAction && speed > 0.1) {
+      runAction.paused = false;
+      runAction.setEffectiveTimeScale(1 + speed * 0.5);
+    } else if (runAction) {
+      runAction.paused = true;
+    }
+  }
+})=>{
     const phi = gaitTime + phase;
     const zOff = Math.sin(phi)*strideAmp;
     const yLift = Math.max(0, Math.sin(phi))*stepHeight;
