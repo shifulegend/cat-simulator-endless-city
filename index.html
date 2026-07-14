@@ -46,7 +46,6 @@
 "use strict";
 
 /* ============================= GLOBAL SETUP ============================= */
-const 
     // Load GLTFLoader from Three.js examples (CDN)
     // This is needed because the vendored Three.js r128 doesn't include GLTFLoader
     const GLTFLoaderScript = document.createElement('script');
@@ -54,9 +53,10 @@ const
     document.head.appendChild(GLTFLoaderScript);
     GLTFLoaderScript.onload = function() {
       console.log('✓ GLTFLoader loaded');
+      if (typeof loadCatModel === 'function') loadCatModel();
     };
 
-canvas = document.getElementById('c');
+const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -691,7 +691,19 @@ function loadCatModel() {
     'assets/cat/scene.gltf',
     function(gltf) {
       catModel = gltf.scene;
-      catModel.scale.set(0.01, 0.01, 0.01);
+      
+      const box = new THREE.Box3().setFromObject(catModel);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 1.2 / maxDim;
+      catModel.scale.set(scale, scale, scale);
+      
+      const center = box.getCenter(new THREE.Vector3());
+      catModel.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
+      
+      // Many sketchfab models face +Z instead of -Z. Rotate 180 deg by default.
+      catModel.rotation.y = Math.PI;
+
       catModelGroup.add(catModel);
 
       if (gltf.animations && gltf.animations.length > 0) {
@@ -711,7 +723,7 @@ function loadCatModel() {
     }
   );
 }
-loadCatModel();
+// loadCatModel() is now called when GLTFLoader is loaded
 
 /* ============================= CAT AVATAR (rounder, more organic) ============================= */
 const catRoot = new THREE.Group();
