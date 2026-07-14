@@ -669,12 +669,10 @@ function updateChunkStreaming(playerX, playerZ){
   });
 }
 
-<<<<<<< HEAD
-
 /* ============================= OPTIONAL: LOAD EXTERNAL CAT MODEL ============================= */
 // This code attempts to load an external glTF cat model with animation.
 // If it fails, the procedural cat (defined below) will be used instead.
-/*
+
 let catModel = null;
 let catMixer = null;
 let runAction = null;
@@ -693,7 +691,7 @@ function loadCatModel() {
     'assets/cat/scene.gltf',
     function(gltf) {
       catModel = gltf.scene;
-      catModel.scale.set(0.5, 0.5, 0.5);
+      catModel.scale.set(0.01, 0.01, 0.01);
       catModelGroup.add(catModel);
 
       if (gltf.animations && gltf.animations.length > 0) {
@@ -714,10 +712,7 @@ function loadCatModel() {
   );
 }
 loadCatModel();
-*/
 
-=======
->>>>>>> parent of eeabf1b (feat: replace procedural cat with animated glTF model (Sketchfab CC-BY))
 /* ============================= CAT AVATAR (rounder, more organic) ============================= */
 const catRoot = new THREE.Group();
 scene.add(catRoot);
@@ -907,6 +902,17 @@ function solveLegIK(legObj, targetLocal){
 let gaitTime = 0;
 const targetVec = new THREE.Vector3();
 function animateCat(dt, speed){
+  // Update cat animation mixer
+  if (catMixer && catLoaded) {
+    catMixer.update(dt);
+    if (runAction && speed > 0.1) {
+      runAction.paused = false;
+      runAction.setEffectiveTimeScale(1 + speed * 0.5);
+    } else if (runAction) {
+      runAction.paused = true;
+    }
+  }
+
   gaitTime += dt * (2 + speed*4.5);
   const strideAmp = 0.18 * Math.min(1, 0.3+speed*1.4);
   const stepHeight = 0.14 * Math.min(1, 0.3+speed*1.4);
