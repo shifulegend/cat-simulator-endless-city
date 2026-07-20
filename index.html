@@ -703,7 +703,9 @@ let activeCatMixer = null;
 let activeCatAction = null;
 const catModelGroup = new THREE.Group();
 catRoot.add(catModelGroup); // attach to catRoot so it inherits movement
-window.__debug = { catRoot, catModelGroup, torso, camera, scene, catCatalog };
+Object.defineProperty(window, '__debug', {
+  get(){ return { catRoot, catModelGroup, torso, camera, scene, catCatalog, activeCatModel, activeCatMixer }; }
+});
 
 
 function renderCatCards(){
