@@ -18,6 +18,14 @@
   #startBtn{margin-top:18px;padding:12px 28px;font-size:16px;background:#ff9a3c;border:none;border-radius:8px;color:#1a1a1a;font-weight:bold;pointer-events:auto;cursor:pointer;}
   #creditsBtn{margin-top:10px;padding:6px 14px;font-size:12px;background:transparent;border:1px solid rgba(255,255,255,.4);border-radius:6px;color:#e8e8e8;font-weight:normal;pointer-events:auto;cursor:pointer;text-decoration:none;display:inline-block;opacity:.8;}
   #creditsBtn:hover{opacity:1;border-color:#ff9a3c;color:#ff9a3c;}
+
+  .cat-card{width:160px;background:#1c2230;border:2px solid #333c4d;border-radius:14px;padding:16px 10px;cursor:pointer;transition:border-color .2s,transform .15s;}
+  .cat-card:hover{transform:translateY(-4px);border-color:#7fa8ff;}
+  .cat-card.selected{border-color:#ff9a3c;box-shadow:0 0 0 2px #ff9a3c inset;}
+  .cat-card .thumb{width:100%;height:100px;display:flex;align-items:center;justify-content:center;font-size:42px;margin-bottom:10px;}
+  .cat-card .cat-name{font-size:14px;font-weight:600;color:#fff;}
+  .cat-card .cat-desc{font-size:11px;color:#9aa4b5;margin-top:4px;}
+  #catConfirmBtn:not(:disabled){cursor:pointer;opacity:1;background:#ff9a3c;color:#1a1200;}
 </style>
 </head>
 <body>
@@ -26,6 +34,12 @@
   <p>Roam a truly endless city grid that streams seamlessly in every direction as a cat: intersections with traffic lights, plazas with fountains and trees, roaming pigeons to chase, and cars driving by. Left side: move. Right side: look. Tap the paw to meow. On PC: WASD/Arrows + mouse-drag, Space to meow.</p>
   <button id="startBtn">Start</button>
   <a id="creditsBtn" href="credits.html">Credits</a>
+</div>
+<div id="catSelectOverlay" style="position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,14,20,0.92);z-index:50;color:#f0f0f0;font-family:system-ui,sans-serif;text-align:center;padding:20px;box-sizing:border-box;">
+  <h1 style="margin:0 0 8px;font-size:28px;">Choose Your Cat</h1>
+  <p style="margin:0 0 24px;color:#c8c8c8;max-width:480px;">Pick your companion for the endless city. Each cat has its own look and movement.</p>
+  <div id="catCardGrid" style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;max-width:900px;"></div>
+  <button id="catConfirmBtn" disabled style="margin-top:28px;padding:12px 32px;font-size:16px;border-radius:10px;border:none;background:#4a4536;color:#fff;cursor:not-allowed;opacity:0.5;transition:opacity .2s;">Play with this cat</button>
 </div>
 <canvas id="c"></canvas>
 <canvas id="joyCanvas"></canvas>
@@ -48,12 +62,14 @@
 /* ============================= GLOBAL SETUP ============================= */
     // Load GLTFLoader from Three.js examples (CDN)
     // This is needed because the vendored Three.js r128 doesn't include GLTFLoader
+    window.gltfLoaderReady = false;
     const GLTFLoaderScript = document.createElement('script');
     GLTFLoaderScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
     document.head.appendChild(GLTFLoaderScript);
     GLTFLoaderScript.onload = function() {
       console.log('✓ GLTFLoader loaded');
-      if (typeof loadCatModel === 'function') loadCatModel();
+      window.gltfLoaderReady = true;
+      if (typeof onGltfLoaderReady === 'function') onGltfLoaderReady();
     };
 
 const canvas = document.getElementById('c');
@@ -669,65 +685,125 @@ function updateChunkStreaming(playerX, playerZ){
   });
 }
 
-/* ============================= OPTIONAL: LOAD EXTERNAL CAT MODEL ============================= */
-// This code attempts to load an external glTF cat model with animation.
-// If it fails, the procedural cat (defined below) will be used instead.
-
-let catModel = null;
-let catMixer = null;
-let runAction = null;
-let catLoaded = false;
-const catModelGroup = new THREE.Group();
-scene.add(catModelGroup);
-
-function loadCatModel() {
-  if (typeof THREE.GLTFLoader === 'undefined') {
-    console.log('ℹ️ GLTFLoader not available, using procedural cat');
-    return;
-  }
-
-  const loader = new THREE.GLTFLoader();
-  loader.load(
-    'assets/cat/scene.gltf',
-    function(gltf) {
-      catModel = gltf.scene;
-      
-      const box = new THREE.Box3().setFromObject(catModel);
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const scale = 1.2 / maxDim;
-      catModel.scale.set(scale, scale, scale);
-      
-      const center = box.getCenter(new THREE.Vector3());
-      catModel.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
-      
-      // Many sketchfab models face +Z instead of -Z. Rotate 180 deg by default.
-      catModel.rotation.y = Math.PI;
-
-      catModelGroup.add(catModel);
-
-      if (gltf.animations && gltf.animations.length > 0) {
-        catMixer = new THREE.AnimationMixer(catModel);
-        runAction = catMixer.clipAction(gltf.animations[0]);
-        runAction.setLoop(THREE.LoopRepeat, Infinity);
-        runAction.play();
-      }
-      catLoaded = true;
-      catRoot.visible = false; // Hide procedural cat
-      console.log('✓ Cat model loaded');
-    },
-    undefined,
-    function(error) {
-      console.log('ℹ️ Using procedural cat (external model failed)');
-      catRoot.visible = true;
-    }
-  );
-}
-// loadCatModel() is now called when GLTFLoader is loaded
-
 /* ============================= CAT AVATAR (rounder, more organic) ============================= */
 const catRoot = new THREE.Group();
 scene.add(catRoot);
+
+/* ============================= MULTI-CAT SELECTION SYSTEM ============================= */
+const catCatalog = [
+  { id:'lowpoly_runner', name:'Lowpoly Runner', path:'assets/cats/cat_0_lowpoly_runner/model.glb', icon:'\u{1F3C3}', desc:'Fast & light, built-in run cycle' },
+  { id:'cartoon_cat',    name:'Cartoon Cat',    path:'assets/cats/cat_1_cartoon_cat/model.glb',    icon:'\u{1F431}', desc:'Rigged, expressive cartoon style' },
+  { id:'simple',         name:'Simple',         path:'assets/cats/cat_2_simple/model.glb',         icon:'\u{1F408}', desc:'Clean minimalist sculpt' },
+  { id:'sculpted',       name:'Sculpted',       path:'assets/cats/cat_3_sculpted/model.glb',       icon:'\u{1F63A}', desc:'Detailed hand-sculpted look' },
+];
+
+let selectedCatId = null;
+let activeCatModel = null;
+let activeCatMixer = null;
+let activeCatAction = null;
+const catModelGroup = new THREE.Group();
+catRoot.add(catModelGroup); // attach to catRoot so it inherits movement
+
+function renderCatCards(){
+  const grid = document.getElementById('catCardGrid');
+  grid.innerHTML = '';
+  catCatalog.forEach(cat => {
+    const card = document.createElement('div');
+    card.className = 'cat-card';
+    card.dataset.catId = cat.id;
+    card.innerHTML = `<div class="thumb">${cat.icon}</div><div class="cat-name">${cat.name}</div><div class="cat-desc">${cat.desc}</div>`;
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedCatId = cat.id;
+      const btn = document.getElementById('catConfirmBtn');
+      btn.disabled = false;
+    });
+    grid.appendChild(card);
+  });
+}
+
+function loadSelectedCat(catId){
+  const catData = catCatalog.find(c => c.id === catId);
+  if(!catData) return;
+  console.log('Loading selected cat:', catData.name, catData.path);
+
+  function doLoad(){
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+      catData.path,
+      function(gltf){
+        console.log('\u2713 Cat model loaded:', catData.name);
+
+        if(activeCatMixer){ activeCatMixer.stopAllAction(); activeCatMixer=null; activeCatAction=null; }
+        while(catModelGroup.children.length > 0) catModelGroup.remove(catModelGroup.children[0]);
+
+        const model = gltf.scene;
+
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const targetHeight = 0.62;
+        const scale = size.y > 0.0001 ? targetHeight / size.y : 1;
+        model.scale.setScalar(scale);
+
+        const box2 = new THREE.Box3().setFromObject(model);
+        const center = box2.getCenter(new THREE.Vector3());
+        model.position.x -= center.x;
+        model.position.z -= center.z;
+        model.position.y -= box2.min.y;
+
+        model.rotation.y = Math.PI;
+
+        catModelGroup.add(model);
+        activeCatModel = model;
+
+        if(gltf.animations && gltf.animations.length > 0){
+          let clip = gltf.animations.find(a => /run|walk/i.test(a.name)) || gltf.animations[0];
+          activeCatMixer = new THREE.AnimationMixer(model);
+          activeCatAction = activeCatMixer.clipAction(clip);
+          activeCatAction.setLoop(THREE.LoopRepeat, Infinity);
+          activeCatAction.play();
+          console.log('\u2713 Animation clip:', clip.name);
+        } else {
+          console.log('\u2139 No animation clips; using procedural bob fallback');
+        }
+
+        torso.visible = false; // hide procedural cat parts; catRoot itself stays visible as the moving pivot
+        catModelGroup.visible = true;
+      },
+      undefined,
+      function(error){
+        console.error('\u2717 Error loading cat model:', catData.name, error);
+        torso.visible = true;
+        catModelGroup.visible = false;
+      }
+    );
+  }
+
+  if(window.gltfLoaderReady){
+    doLoad();
+  } else {
+    window.onGltfLoaderReady = doLoad;
+  }
+}
+
+function updateActiveCatAnimation(dt, speed){
+  if(activeCatMixer && activeCatAction){
+    activeCatMixer.update(dt);
+    if(speed > 0.08){
+      activeCatAction.paused = false;
+      activeCatAction.setEffectiveTimeScale(1 + speed*0.6);
+    } else {
+      activeCatAction.paused = true;
+    }
+  } else if(catModelGroup.children.length > 0){
+    gaitTime += dt * (2 + speed*4.5);
+    const amt = Math.min(1, 0.3+speed*1.4);
+    catModelGroup.position.y = Math.sin(gaitTime*2)*0.03*amt;
+    catModelGroup.rotation.z = Math.sin(gaitTime)*0.06*amt;
+  }
+}
+
 
 function makeBlobShadowTexture(){
   const size=128, c=document.createElement('canvas'); c.width=size;c.height=size;
@@ -914,17 +990,11 @@ function solveLegIK(legObj, targetLocal){
 let gaitTime = 0;
 const targetVec = new THREE.Vector3();
 function animateCat(dt, speed){
-  // Update cat animation mixer
-  if (catMixer && catLoaded) {
-    catMixer.update(dt);
-    if (runAction && speed > 0.1) {
-      runAction.paused = false;
-      runAction.setEffectiveTimeScale(1 + speed * 0.5);
-    } else if (runAction) {
-      runAction.paused = true;
-    }
-  }
+  // Drive the currently selected/loaded cat model's animation (walk/run clip or bob fallback)
+  updateActiveCatAnimation(dt, speed);
 
+  // Procedural cat animation (only meaningful while torso/procedural cat is visible)
+  if(!torso.visible) return;
   gaitTime += dt * (2 + speed*4.5);
   const strideAmp = 0.18 * Math.min(1, 0.3+speed*1.4);
   const stepHeight = 0.14 * Math.min(1, 0.3+speed*1.4);
@@ -939,6 +1009,7 @@ function animateCat(dt, speed){
   const bob = Math.sin(gaitTime*2)*0.02*Math.min(1,0.3+speed*1.4);
   torso.position.y = 0.5 + bob;
 }
+
 
 /* ============================= CONTROLS ============================= */
 const input = {moveX:0, moveY:0, lookX:0, lookY:0};
@@ -1265,6 +1336,14 @@ updateChunkStreaming(0,0);
 
 document.getElementById('startBtn').addEventListener('click', ()=>{
   document.getElementById('startOverlay').style.display='none';
+  document.getElementById('catSelectOverlay').style.display='flex';
+  renderCatCards();
+});
+
+document.getElementById('catConfirmBtn').addEventListener('click', ()=>{
+  if(selectedCatId === null) return;
+  document.getElementById('catSelectOverlay').style.display='none';
+  loadSelectedCat(selectedCatId);
   initAudio();
   clock.start();
   requestAnimationFrame(update);
