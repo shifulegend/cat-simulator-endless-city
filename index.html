@@ -691,10 +691,12 @@ scene.add(catRoot);
 
 /* ============================= MULTI-CAT SELECTION SYSTEM ============================= */
 const catCatalog = [
-  { id:'lowpoly_runner', name:'Lowpoly Runner', path:'assets/cats/cat_0_lowpoly_runner/model.glb', icon:'\u{1F3C3}', desc:'Fast & light, built-in run cycle' },
-  { id:'cartoon_cat',    name:'Cartoon Cat',    path:'assets/cats/cat_1_cartoon_cat/model.glb',    icon:'\u{1F431}', desc:'Rigged, expressive cartoon style' },
-  { id:'simple',         name:'Simple',         path:'assets/cats/cat_2_simple/model.glb',         icon:'\u{1F408}', desc:'Clean minimalist sculpt' },
-  { id:'sculpted',       name:'Sculpted',       path:'assets/cats/cat_3_sculpted/model.glb',       icon:'\u{1F63A}', desc:'Detailed hand-sculpted look' },
+  // facingOffset: rotation (radians) to apply so the model's visual front matches catRoot's heading.
+  // Measure per-asset: 0 = model's native front already faces -Z (our forward), Math.PI = model faces +Z (needs 180 flip), etc.
+  { id:'lowpoly_runner', name:'Lowpoly Runner', path:'assets/cats/cat_0_lowpoly_runner/model.glb', icon:'\u{1F3C3}', desc:'Fast & light, built-in run cycle', facingOffset: Math.PI },
+  { id:'cartoon_cat',    name:'Cartoon Cat',    path:'assets/cats/cat_1_cartoon_cat/model.glb',    icon:'\u{1F431}', desc:'Rigged, expressive cartoon style', facingOffset: Math.PI },
+  { id:'simple',         name:'Simple',         path:'assets/cats/cat_2_simple/model.glb',         icon:'\u{1F408}', desc:'Clean minimalist sculpt', facingOffset: Math.PI },
+  { id:'sculpted',       name:'Sculpted',       path:'assets/cats/cat_3_sculpted/model.glb',       icon:'\u{1F63A}', desc:'Detailed hand-sculpted look', facingOffset: Math.PI },
 ];
 
 let selectedCatId = null;
@@ -738,7 +740,7 @@ function renderCatCards(){
 const CatController = {
   TARGET_HEIGHT: 0.62,
 
-  normalizeModel(model){
+  normalizeModel(model, facingOffset){
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const scale = size.y > 0.0001 ? this.TARGET_HEIGHT / size.y : 1;
@@ -750,7 +752,9 @@ const CatController = {
     model.position.z -= center.z;
     model.position.y -= box2.min.y;
 
-    model.rotation.y = Math.PI; // most Sketchfab rigs face +Z; our forward is -Z
+    // Per-asset calibrated offset so the model's visual front matches catRoot's heading.
+    // Defaults to Math.PI (most Sketchfab rigs face +Z; our forward is -Z) if not specified.
+    model.rotation.y = (typeof facingOffset === 'number') ? facingOffset : Math.PI;
   },
 
   pickClip(animations){
@@ -770,7 +774,7 @@ const CatController = {
           while(group.children.length > 0) group.remove(group.children[0]);
 
           const model = gltf.scene;
-          CatController.normalizeModel(model);
+          CatController.normalizeModel(model, catData.facingOffset);
           group.add(model);
           activeCatModel = model;
 
