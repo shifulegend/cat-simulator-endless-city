@@ -1317,7 +1317,7 @@ function update(){
 
   const moveMag = Math.min(1, Math.sqrt(input.moveX*input.moveX+input.moveY*input.moveY));
   if(moveMag > 0.05){
-    const inputAngle = Math.atan2(input.moveX, -input.moveY);
+    const inputAngle = Math.atan2(-input.moveX, -input.moveY);
     heading = camYaw + inputAngle;
     currentSpeed = THREE.MathUtils.lerp(currentSpeed, moveMag*MAX_SPEED, 0.12);
   } else {
