@@ -693,7 +693,7 @@ scene.add(catRoot);
 const catCatalog = [
   // facingOffset: rotation (radians) to apply so the model's visual front matches catRoot's heading.
   // Measure per-asset: 0 = model's native front already faces -Z (our forward), Math.PI = model faces +Z (needs 180 flip), etc.
-  { id:'lowpoly_runner', name:'Lowpoly Runner', path:'assets/cats/cat_0_lowpoly_runner/model.glb', icon:'\u{1F3C3}', desc:'Fast & light, built-in run cycle', facingOffset: Math.PI },
+  { id:'lowpoly_runner', name:'Lowpoly Runner', path:'assets/cats/cat_0_lowpoly_runner/model.glb', icon:'\u{1F3C3}', desc:'Fast & light, built-in run cycle', facingOffset: -Math.PI/2 },
   { id:'cartoon_cat',    name:'Cartoon Cat',    path:'assets/cats/cat_1_cartoon_cat/model.glb',    icon:'\u{1F431}', desc:'Rigged, expressive cartoon style', facingOffset: Math.PI },
   { id:'simple',         name:'Simple',         path:'assets/cats/cat_2_simple/model.glb',         icon:'\u{1F408}', desc:'Clean minimalist sculpt', facingOffset: Math.PI },
   { id:'sculpted',       name:'Sculpted',       path:'assets/cats/cat_3_sculpted/model.glb',       icon:'\u{1F63A}', desc:'Detailed hand-sculpted look', facingOffset: Math.PI },
