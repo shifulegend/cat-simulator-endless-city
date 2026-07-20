@@ -727,85 +727,107 @@ function renderCatCards(){
   });
 }
 
+/* ============================= CAT CONTROLLER (shared logic for ALL cat assets) =============================
+ * Any future cat model added to catCatalog automatically gets:
+ *   1. Auto-scale to a consistent height (TARGET_HEIGHT)
+ *   2. Auto-centering on ground, facing -Z (procedural cat's forward convention)
+ *   3. Animation: prefers a clip named /run|walk/i, else first clip, else procedural bob/sway fallback
+ *   4. Speed-based playback rate so faster movement = faster animation
+ * To add a new cat: just add an entry to catCatalog. No other code changes needed.
+ * ============================================================================================= */
+const CatController = {
+  TARGET_HEIGHT: 0.62,
+
+  normalizeModel(model){
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const scale = size.y > 0.0001 ? this.TARGET_HEIGHT / size.y : 1;
+    model.scale.setScalar(scale);
+
+    const box2 = new THREE.Box3().setFromObject(model);
+    const center = box2.getCenter(new THREE.Vector3());
+    model.position.x -= center.x;
+    model.position.z -= center.z;
+    model.position.y -= box2.min.y;
+
+    model.rotation.y = Math.PI; // most Sketchfab rigs face +Z; our forward is -Z
+  },
+
+  pickClip(animations){
+    if(!animations || animations.length === 0) return null;
+    return animations.find(a => /run|walk/i.test(a.name)) || animations[0];
+  },
+
+  load(catData, group, onDone){
+    function doLoad(){
+      const loader = new THREE.GLTFLoader();
+      loader.load(
+        catData.path,
+        function(gltf){
+          console.log('\u2713 Cat model loaded:', catData.name);
+
+          if(activeCatMixer){ activeCatMixer.stopAllAction(); activeCatMixer=null; activeCatAction=null; }
+          while(group.children.length > 0) group.remove(group.children[0]);
+
+          const model = gltf.scene;
+          CatController.normalizeModel(model);
+          group.add(model);
+          activeCatModel = model;
+
+          const clip = CatController.pickClip(gltf.animations);
+          if(clip){
+            activeCatMixer = new THREE.AnimationMixer(model);
+            activeCatAction = activeCatMixer.clipAction(clip);
+            activeCatAction.setLoop(THREE.LoopRepeat, Infinity);
+            activeCatAction.play();
+            console.log('\u2713 Animation clip:', clip.name);
+          } else {
+            console.log('\u2139 No animation clips; using procedural bob fallback');
+          }
+
+          torso.visible = false; // hide procedural cat parts; catRoot itself stays visible as the moving pivot
+          group.visible = true;
+          if(onDone) onDone(true);
+        },
+        undefined,
+        function(error){
+          console.error('\u2717 Error loading cat model:', catData.name, error);
+          torso.visible = true;
+          group.visible = false;
+          if(onDone) onDone(false);
+        }
+      );
+    }
+    if(window.gltfLoaderReady){ doLoad(); } else { window.onGltfLoaderReady = doLoad; }
+  },
+
+  update(dt, speed){
+    if(activeCatMixer && activeCatAction){
+      activeCatMixer.update(dt);
+      if(speed > 0.08){
+        activeCatAction.paused = false;
+        activeCatAction.setEffectiveTimeScale(1 + speed*0.6);
+      } else {
+        activeCatAction.paused = true;
+      }
+    } else if(catModelGroup.children.length > 0){
+      gaitTime += dt * (2 + speed*4.5);
+      const amt = Math.min(1, 0.3+speed*1.4);
+      catModelGroup.position.y = Math.sin(gaitTime*2)*0.03*amt;
+      catModelGroup.rotation.z = Math.sin(gaitTime)*0.06*amt;
+    }
+  }
+};
+
 function loadSelectedCat(catId){
   const catData = catCatalog.find(c => c.id === catId);
   if(!catData) return;
   console.log('Loading selected cat:', catData.name, catData.path);
-
-  function doLoad(){
-    const loader = new THREE.GLTFLoader();
-    loader.load(
-      catData.path,
-      function(gltf){
-        console.log('\u2713 Cat model loaded:', catData.name);
-
-        if(activeCatMixer){ activeCatMixer.stopAllAction(); activeCatMixer=null; activeCatAction=null; }
-        while(catModelGroup.children.length > 0) catModelGroup.remove(catModelGroup.children[0]);
-
-        const model = gltf.scene;
-
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const targetHeight = 0.62;
-        const scale = size.y > 0.0001 ? targetHeight / size.y : 1;
-        model.scale.setScalar(scale);
-
-        const box2 = new THREE.Box3().setFromObject(model);
-        const center = box2.getCenter(new THREE.Vector3());
-        model.position.x -= center.x;
-        model.position.z -= center.z;
-        model.position.y -= box2.min.y;
-
-        model.rotation.y = Math.PI;
-
-        catModelGroup.add(model);
-        activeCatModel = model;
-
-        if(gltf.animations && gltf.animations.length > 0){
-          let clip = gltf.animations.find(a => /run|walk/i.test(a.name)) || gltf.animations[0];
-          activeCatMixer = new THREE.AnimationMixer(model);
-          activeCatAction = activeCatMixer.clipAction(clip);
-          activeCatAction.setLoop(THREE.LoopRepeat, Infinity);
-          activeCatAction.play();
-          console.log('\u2713 Animation clip:', clip.name);
-        } else {
-          console.log('\u2139 No animation clips; using procedural bob fallback');
-        }
-
-        torso.visible = false; // hide procedural cat parts; catRoot itself stays visible as the moving pivot
-        catModelGroup.visible = true;
-      },
-      undefined,
-      function(error){
-        console.error('\u2717 Error loading cat model:', catData.name, error);
-        torso.visible = true;
-        catModelGroup.visible = false;
-      }
-    );
-  }
-
-  if(window.gltfLoaderReady){
-    doLoad();
-  } else {
-    window.onGltfLoaderReady = doLoad;
-  }
+  CatController.load(catData, catModelGroup);
 }
 
 function updateActiveCatAnimation(dt, speed){
-  if(activeCatMixer && activeCatAction){
-    activeCatMixer.update(dt);
-    if(speed > 0.08){
-      activeCatAction.paused = false;
-      activeCatAction.setEffectiveTimeScale(1 + speed*0.6);
-    } else {
-      activeCatAction.paused = true;
-    }
-  } else if(catModelGroup.children.length > 0){
-    gaitTime += dt * (2 + speed*4.5);
-    const amt = Math.min(1, 0.3+speed*1.4);
-    catModelGroup.position.y = Math.sin(gaitTime*2)*0.03*amt;
-    catModelGroup.rotation.z = Math.sin(gaitTime)*0.06*amt;
-  }
+  CatController.update(dt, speed);
 }
 
 
