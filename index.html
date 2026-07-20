@@ -807,11 +807,15 @@ const CatController = {
 
   update(dt, speed){
     if(activeCatMixer && activeCatAction){
-      activeCatMixer.update(dt);
       if(speed > 0.08){
-        activeCatAction.paused = false;
+        if(activeCatAction.paused){ activeCatAction.paused = false; }
+        activeCatMixer.update(dt);
         activeCatAction.setEffectiveTimeScale(1 + speed*0.6);
-      } else {
+      } else if(!activeCatAction.paused){
+        // Freeze at a consistent neutral frame (clip start) instead of an arbitrary
+        // mid-stride pose, since this asset has no dedicated idle clip.
+        activeCatAction.time = 0;
+        activeCatMixer.update(0);
         activeCatAction.paused = true;
       }
     } else if(catModelGroup.children.length > 0){
